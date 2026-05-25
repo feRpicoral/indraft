@@ -1,0 +1,9 @@
+node_modules
+.next
+.yarn
+dist
+coverage
+*.tsbuildinfo
+next-env.d.ts
+yarn.lock
+public

@@ -1,0 +1,96 @@
+# InDraft configuration. Copy to config.yml and customize.
+# config.yml is gitignored — your personal voice and source list never leave the host.
+
+profile:
+  about: |
+    Free-text paragraph about you: who you are, what you build, your voice,
+    who you're talking to. This is the model's primary grounding for tone and
+    point of view. Write in first person. ~150-300 words is the sweet spot.
+  links:
+    github: https://github.com/your-handle
+    linkedin: https://linkedin.com/in/your-handle
+    website: https://your-site.dev
+  # Optional. CLI-only read-only scan of your local code for "personal signal".
+  # local_repos_path: ~/dev
+
+schedule:
+  days: [MON, WED, FRI]
+  timezone: America/New_York
+  hour: 9 # local hour in the timezone above
+
+sources:
+  dev:
+    - https://hnrss.org/frontpage?points=100
+    - https://www.theverge.com/rss/index.xml
+    - https://feeds.arstechnica.com/arstechnica/index
+  ai_research:
+    - https://rss.arxiv.org/rss/cs.ai
+    - https://huggingface.co/blog/feed.xml
+    - https://openai.com/blog/rss.xml
+  hardware:
+    - https://www.theverge.com/rss/index.xml
+  business:
+    - https://techcrunch.com/feed/
+    - https://news.crunchbase.com/feed/
+  # Optional personal signal: your own GitHub + website.
+  personal:
+    github_user: your-handle
+    website_feed: https://your-site.dev/rss.xml
+
+content:
+  pillars:
+    - fullstack
+    - scale_bigtech
+    - cs_fundamentals
+    - uiux_a11y
+    - building_products
+    - news_opinion
+    - international_builder
+  tone_default: casual
+  linter:
+    max_em_dashes: 2
+    max_emojis: 1
+    max_hashtags: 5
+    # Buzzwords that flag press-release cadence (density > 1.5%).
+    buzzwords:
+      - revolutionary
+      - leverage
+      - synergy
+      - unleash
+      - world-class
+      - transform
+      - cutting-edge
+      - game-changer
+      - paradigm
+    # Generic openers that get rejected outright.
+    generic_openers:
+      - "in today's fast-paced"
+      - "in an era of"
+      - "let's dive in"
+      - "i'm thrilled to share"
+      - "it's not just"
+
+media:
+  image_provider: pexels
+  # AI-generated images are only used when the post is explicitly about AI imagery.
+  allow_ai_image_when_on_topic: false
+
+post:
+  # 'none' is the default: 2026 research shows both body and comment links are suppressed
+  # by the LinkedIn algorithm. Per-post override is available in the review UI.
+  link_placement: none # none | body | comment
+  hashtags_target: 4
+
+review:
+  link_ttl_hours: 24
+  reminder_after_hours: 24
+  stale_after_hours: 48
+
+llm:
+  gateway: openrouter
+  # Frontier model for drafting (anti-AI-tell quality bar degrades on weaker models).
+  draft_model: anthropic/claude-opus-4-7
+  # Cheap utility model for ranking/tagging source items.
+  utility_model: anthropic/claude-haiku-4-5-20251001
+  prompt_caching: true
+  max_retries: 3
