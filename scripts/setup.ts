@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { execSync, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { confirm, input, password } from '@inquirer/prompts';
@@ -21,6 +21,7 @@ async function main() {
   results.push(await ensureVercelLink());
   results.push(await ensureKvStore());
   results.push(await ensureSecrets());
+  results.push(await ensureConfigYaml());
   results.push(await checkResendDomain());
 
   summary(results);
@@ -90,6 +91,7 @@ const SECRETS: SecretDef[] = [
   { key: 'NOTIFY_FROM_ADDRESS', description: 'Verified Resend sender' },
   { key: 'PEXELS_API_KEY', description: 'Pexels API key', secret: true },
   { key: 'WEBAUTHN_RP_ID', description: 'WebAuthn relying-party ID (your bare domain)' },
+  { key: 'APP_URL', description: 'Deployed origin (no trailing slash), e.g. https://indraft.you.dev' },
   {
     key: 'MAGIC_LINK_SIGNING_SECRET',
     description: 'Signs magic links (auto-generated)',
@@ -152,6 +154,36 @@ async function checkResendDomain(): Promise<StepResult> {
     status: 'manual',
     note: 'Verify your sender domain in Resend dashboard. https://resend.com/domains',
   };
+}
+
+async function ensureConfigYaml(): Promise<StepResult> {
+  const name = 'config (INDRAFT_CONFIG_YAML)';
+  if (!has('vercel')) return { name, status: 'manual' };
+  const list = sh('vercel env ls 2>/dev/null');
+  if (parseEnvKeys(list.stdout).includes('INDRAFT_CONFIG_YAML')) {
+    return { name, status: 'skipped', note: 'already set; run `vercel env rm INDRAFT_CONFIG_YAML` to update' };
+  }
+  const local = join(process.cwd(), 'config.yml');
+  if (!existsSync(local)) {
+    return {
+      name,
+      status: 'manual',
+      note: 'create config.yml first (cp config.example.yml config.yml), then re-run setup',
+    };
+  }
+  const ok = await confirm({
+    message: 'Upload local config.yml to Vercel as INDRAFT_CONFIG_YAML?',
+    default: true,
+  });
+  if (!ok) return { name, status: 'skipped' };
+  const yamlBody = readFileSync(local, 'utf8');
+  const r = spawnSync('vercel', ['env', 'add', 'INDRAFT_CONFIG_YAML', 'production', 'preview', 'development'], {
+    input: yamlBody,
+    stdio: ['pipe', 'inherit', 'inherit'],
+  });
+  return r.status === 0
+    ? { name, status: 'ok' }
+    : { name, status: 'failed', note: 'env add failed' };
 }
 
 function summary(results: StepResult[]) {
@@ -229,7 +261,3 @@ main().catch((err) => {
   process.exit(1);
 });
 
-// Touch unused import warnings: readFileSync, writeFileSync reserved for future
-// per-step state files if we ever need them.
-void readFileSync;
-void writeFileSync;

@@ -10,26 +10,44 @@ export class ConfigError extends Error {
 }
 
 /**
- * Load and validate `config.yml` (or a custom path). Throws ConfigError with a
- * human-readable list of issues on validation failure.
+ * Load and validate the config. Throws ConfigError with a human-readable list
+ * of issues on validation failure.
  *
- * Search order when no path is given:
- *   1. $INDRAFT_CONFIG
- *   2. ./config.yml
- *   3. ./config.example.yml (last resort — useful for tests)
+ * Resolution order (first match wins):
+ *   1. Explicit `path` argument (tests pass this)
+ *   2. `$INDRAFT_CONFIG_YAML` — config inlined as a YAML string. This is how
+ *      production runs on Vercel see the config; `config.yml` is gitignored
+ *      because it carries personal data.
+ *   3. `$INDRAFT_CONFIG` — path to a YAML file
+ *   4. `./config.yml` (local dev)
+ *   5. `./config.example.yml` (last resort, for first-run/testing only)
  */
 export function loadConfig(path?: string): Config {
-  const candidate = path ?? process.env.INDRAFT_CONFIG ?? defaultConfigPath();
-  if (!existsSync(candidate)) {
+  if (path) {
+    if (!existsSync(path)) {
+      throw new ConfigError(`Config file not found at ${path}`);
+    }
+    return parseConfigYaml(readFileSync(path, 'utf8'), `config at ${path}`);
+  }
+
+  if (process.env.INDRAFT_CONFIG_YAML) {
+    return parseConfigYaml(process.env.INDRAFT_CONFIG_YAML, 'INDRAFT_CONFIG_YAML');
+  }
+
+  const filePath = process.env.INDRAFT_CONFIG ?? defaultConfigPath();
+  if (!existsSync(filePath)) {
     throw new ConfigError(
-      `Config file not found at ${candidate}. Copy config.example.yml to config.yml and fill it in.`,
+      `Config file not found at ${filePath}. Set INDRAFT_CONFIG_YAML (production) or copy config.example.yml to config.yml (local).`,
     );
   }
-  const raw = readFileSync(candidate, 'utf8');
-  const parsed = yaml.load(raw);
+  return parseConfigYaml(readFileSync(filePath, 'utf8'), `config at ${filePath}`);
+}
+
+function parseConfigYaml(yamlText: string, label: string): Config {
+  const parsed = yaml.load(yamlText);
   const result = ConfigSchema.safeParse(parsed);
   if (!result.success) {
-    throw new ConfigError(formatZodError('config.yml', result.error));
+    throw new ConfigError(formatZodError(label, result.error));
   }
   return result.data;
 }

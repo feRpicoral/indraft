@@ -102,6 +102,10 @@ Copy from `config.example.yml`. Every field is documented inline. The key sectio
 
 See `.env.example`. Set on Vercel (production + preview + development) via `vercel env add` — the setup script wraps this.
 
+### Production config
+
+`config.yml` is gitignored because it carries personal data, so the deployed Vercel runtime can't read it from disk. Instead, set the env var **`INDRAFT_CONFIG_YAML`** to the full contents of your `config.yml`. The loader checks this env first, falls back to file. `yarn setup` does the upload for you (`config.yml` → `vercel env add INDRAFT_CONFIG_YAML`). When you change config later, re-run setup or `vercel env rm INDRAFT_CONFIG_YAML && vercel env add INDRAFT_CONFIG_YAML`.
+
 ## Running
 
 ### On Vercel (production)

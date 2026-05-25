@@ -69,6 +69,30 @@ llm:
     expect(() => loadConfig(join(tmp, 'nope.yml'))).toThrow(/Config file not found/);
   });
 
+  it('reads config from INDRAFT_CONFIG_YAML when set (production path)', () => {
+    const prev = process.env.INDRAFT_CONFIG_YAML;
+    process.env.INDRAFT_CONFIG_YAML = `
+profile:
+  about: ${'a'.repeat(40)}
+schedule:
+  days: [MON]
+  timezone: UTC
+sources: {}
+content:
+  pillars: [fullstack]
+llm:
+  draft_model: opus
+  utility_model: haiku
+`;
+    try {
+      const cfg = loadConfig();
+      expect(cfg.llm.draft_model).toBe('opus');
+    } finally {
+      if (prev !== undefined) process.env.INDRAFT_CONFIG_YAML = prev;
+      else delete process.env.INDRAFT_CONFIG_YAML;
+    }
+  });
+
   it('rejects empty pillars (must have at least one)', () => {
     const path = join(tmp, 'config.yml');
     writeFileSync(
