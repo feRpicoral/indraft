@@ -1,0 +1,129 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { loadConfig, loadEnv, ConfigError } from '@/lib/config/loader';
+
+describe('loadConfig', () => {
+  let tmp: string;
+  beforeEach(() => {
+    tmp = mkdtempSync(join(tmpdir(), 'indraft-cfg-'));
+  });
+  afterEach(() => {
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it('parses a minimal valid config', () => {
+    const path = join(tmp, 'config.yml');
+    writeFileSync(
+      path,
+      `
+profile:
+  about: ${'a'.repeat(40)}
+schedule:
+  days: [MON, WED, FRI]
+  timezone: America/New_York
+sources: {}
+content:
+  pillars: [fullstack, news_opinion]
+llm:
+  draft_model: anthropic/claude-opus-4-7
+  utility_model: anthropic/claude-haiku-4-5-20251001
+`,
+    );
+    const cfg = loadConfig(path);
+    expect(cfg.schedule.hour).toBe(9); // default
+    expect(cfg.post.link_placement).toBe('none'); // research-driven default
+    expect(cfg.content.linter.max_em_dashes).toBe(2);
+    expect(cfg.review.link_ttl_hours).toBe(24);
+  });
+
+  it('rejects a config with a too-short about field, listing the path', () => {
+    const path = join(tmp, 'config.yml');
+    writeFileSync(
+      path,
+      `
+profile:
+  about: too short
+schedule:
+  days: [MON]
+  timezone: UTC
+sources: {}
+content:
+  pillars: [x]
+llm:
+  draft_model: m
+  utility_model: m
+`,
+    );
+    expect(() => loadConfig(path)).toThrow(ConfigError);
+    try {
+      loadConfig(path);
+    } catch (e) {
+      const msg = (e as Error).message;
+      expect(msg).toContain('profile.about');
+    }
+  });
+
+  it('throws ConfigError when the file is missing', () => {
+    expect(() => loadConfig(join(tmp, 'nope.yml'))).toThrow(/Config file not found/);
+  });
+
+  it('rejects empty pillars (must have at least one)', () => {
+    const path = join(tmp, 'config.yml');
+    writeFileSync(
+      path,
+      `
+profile:
+  about: ${'a'.repeat(40)}
+schedule:
+  days: [MON]
+  timezone: UTC
+sources: {}
+content:
+  pillars: []
+llm:
+  draft_model: m
+  utility_model: m
+`,
+    );
+    expect(() => loadConfig(path)).toThrow(/content\.pillars/);
+  });
+});
+
+describe('loadEnv', () => {
+  it('accepts a valid env', () => {
+    const env = loadEnv({
+      MAGIC_LINK_SIGNING_SECRET: 'x'.repeat(40),
+      WEBAUTHN_RP_ID: 'localhost',
+      CRON_SECRET: 'cron',
+      NOTIFY_TO_ADDRESS: 'a@b.com',
+      NOTIFY_FROM_ADDRESS: 'c@d.com',
+    });
+    expect(env.WEBAUTHN_RP_ID).toBe('localhost');
+  });
+
+  it('rejects a short signing secret', () => {
+    expect(() =>
+      loadEnv({
+        MAGIC_LINK_SIGNING_SECRET: 'short',
+        WEBAUTHN_RP_ID: 'localhost',
+        CRON_SECRET: 'cron',
+        NOTIFY_TO_ADDRESS: 'a@b.com',
+        NOTIFY_FROM_ADDRESS: 'c@d.com',
+      }),
+    ).toThrow(/MAGIC_LINK_SIGNING_SECRET/);
+  });
+
+  it('rejects an invalid email address', () => {
+    expect(() =>
+      loadEnv({
+        MAGIC_LINK_SIGNING_SECRET: 'x'.repeat(40),
+        WEBAUTHN_RP_ID: 'localhost',
+        CRON_SECRET: 'cron',
+        NOTIFY_TO_ADDRESS: 'not-an-email',
+        NOTIFY_FROM_ADDRESS: 'c@d.com',
+      }),
+    ).toThrow(/NOTIFY_TO_ADDRESS/);
+  });
+});
