@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { verifyMagicLink } from '@/lib/review/magicLink';
 import { claimMagicNonce } from '@/lib/state/tokens';
-import { createSession, sessionCookie, SESSION_COOKIE, readSession } from '@/lib/review/session';
+import { createSession, SESSION_COOKIE, readSession } from '@/lib/review/session';
 import { getDraft } from '@/lib/state/drafts';
 import { loadConfig, loadEnv } from '@/lib/config/loader';
 import { isStale } from '@/lib/review/staleness';

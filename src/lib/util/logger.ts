@@ -12,7 +12,6 @@ function emit(level: Level, msg: string, fields?: Record<string, unknown>): void
   if (ENABLED_LEVELS[level] < MIN_LEVEL) return;
   const payload = { ts: new Date().toISOString(), level, msg, ...fields };
   // Use console[level] so Vercel's log UI categorizes correctly.
-  // eslint-disable-next-line no-console
   (console[level] ?? console.log)(JSON.stringify(payload));
 }
 

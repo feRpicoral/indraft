@@ -11,22 +11,18 @@ export function registerAuth(program: Command): void {
       const env = loadEnv();
       const base = opts.url ?? env.APP_URL;
       if (!base) {
-        // eslint-disable-next-line no-console
         console.error('Set APP_URL or pass --url with your deployed URL.');
         process.exit(1);
       }
       const bootstrap = env.ENROLLMENT_BOOTSTRAP_TOKEN;
       if (!bootstrap) {
-        // eslint-disable-next-line no-console
         console.error('ENROLLMENT_BOOTSTRAP_TOKEN missing — first-time OAuth needs it.');
         process.exit(1);
       }
       const target = `${base}/api/auth/linkedin/start?bootstrap=${encodeURIComponent(bootstrap)}`;
-      // eslint-disable-next-line no-console
       console.log(`Opening ${target}`);
       const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
       spawn(cmd, [target], { stdio: 'ignore', detached: true }).unref();
-      // eslint-disable-next-line no-console
       console.log('Complete the flow in your browser. The callback writes the token to KV.');
     });
 }

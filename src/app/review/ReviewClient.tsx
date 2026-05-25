@@ -94,7 +94,7 @@ export default function ReviewClient({ initialDraft, stale }: Props) {
         </header>
         {stale && (
           <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
-            This draft's source news is more than {/* hours */}48h old. Consider asking the chat
+            This draft&apos;s source news is more than {/* hours */}48h old. Consider asking the chat
             to regenerate against current news.
           </div>
         )}

@@ -13,7 +13,7 @@ export default function AccessPage() {
         </h1>
         <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
           One click emails fresh single-use links for every pending draft to your configured
-          inbox. This page is safe: it can't expose anything and can't post.
+          inbox. This page is safe: it cannot expose anything and cannot post.
         </p>
         <AccessClient />
       </div>

@@ -64,7 +64,6 @@ class ConsoleNotifier implements Notifier {
 }
 
 function log(t: { subject: string; text: string }): void {
-  // eslint-disable-next-line no-console
   console.log(`\n=== ${t.subject} ===\n${t.text}\n`);
 }
 

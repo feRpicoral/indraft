@@ -29,8 +29,8 @@ export default function ChatPane({ draft, onSubmit, busy }: Props) {
       <div className="flex-1 space-y-3 overflow-y-auto pb-3">
         {draft.conversation.length === 0 && (
           <p className="text-sm text-zinc-500">
-            Talk to the draft. "tighten this", "lead with the counterpoint", drag in an image,
-            paste a URL to pivot.
+            Talk to the draft. &ldquo;tighten this&rdquo;, &ldquo;lead with the counterpoint&rdquo;,
+            drag in an image, paste a URL to pivot.
           </p>
         )}
         {draft.conversation.map((t, i) => (

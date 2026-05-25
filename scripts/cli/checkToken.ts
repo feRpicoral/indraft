@@ -9,17 +9,14 @@ export function registerCheckToken(program: Command): void {
     .action(async () => {
       const token = await getLinkedInToken();
       if (!token) {
-        // eslint-disable-next-line no-console
         console.log('LinkedIn token: missing');
         process.exit(1);
       }
       if (isExpired(token)) {
-        // eslint-disable-next-line no-console
         console.log('LinkedIn token: EXPIRED');
         process.exit(1);
       }
       const days = daysToExpiry(token);
-      // eslint-disable-next-line no-console
       console.log(`LinkedIn token: ${days} days left`);
       if (days < 7) process.exit(1);
     });

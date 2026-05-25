@@ -7,7 +7,6 @@ export function registerRun(program: Command): void {
     .description('Run the scheduled job once against the configured KV')
     .action(async () => {
       const result = await runScheduledJob({ dryRun: false });
-      // eslint-disable-next-line no-console
       console.log(JSON.stringify(result, null, 2));
       if (result.skipped) process.exit(0);
       if (!result.created) process.exit(1);

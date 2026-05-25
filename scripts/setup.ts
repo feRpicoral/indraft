@@ -28,9 +28,7 @@ async function main() {
 }
 
 function banner() {
-  // eslint-disable-next-line no-console
   console.log('\n=== InDraft setup ===');
-  // eslint-disable-next-line no-console
   console.log('Each step state-checks first; safe to re-run after a partial setup.\n');
 }
 
@@ -121,7 +119,6 @@ async function ensureSecrets(): Promise<StepResult> {
   if (missing.length === 0) {
     return { name, status: 'skipped', note: 'all required secrets already set' };
   }
-  // eslint-disable-next-line no-console
   console.log(`\nMissing ${missing.length} secrets. We'll add them one at a time.`);
   for (const s of missing) {
     let value: string;
@@ -158,18 +155,15 @@ async function checkResendDomain(): Promise<StepResult> {
 }
 
 function summary(results: StepResult[]) {
-  // eslint-disable-next-line no-console
   console.log('\n=== Summary ===');
   for (const r of results) {
     const tag =
       r.status === 'ok' ? '✓' : r.status === 'skipped' ? '·' : r.status === 'manual' ? '⚠' : '✗';
-    // eslint-disable-next-line no-console
     console.log(`${tag} ${r.name}${r.note ? ` — ${r.note}` : ''}`);
   }
 }
 
 function manualChecklist() {
-  // eslint-disable-next-line no-console
   console.log(`
 === Manual steps (no CLI exists for these) ===
 
@@ -231,7 +225,6 @@ function parseEnvKeys(stdout: string): string[] {
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
   console.error(err);
   process.exit(1);
 });

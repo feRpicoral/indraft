@@ -40,7 +40,7 @@ export interface GeneratorResult {
  * and surfaces warnings on the final attempt rather than blocking.
  */
 export async function draft(deps: GeneratorDeps, args: DraftArgs): Promise<GeneratorResult> {
-  const { cfg, llm } = deps;
+  const { cfg } = deps;
   const system = buildSystemPrompt(cfg);
   const { messages, cacheBreakpoints } = buildDraftMessages({
     cfg,
@@ -57,7 +57,7 @@ export async function draft(deps: GeneratorDeps, args: DraftArgs): Promise<Gener
  * message, and any attachments feed the same JSON-output contract.
  */
 export async function edit(deps: GeneratorDeps, args: EditArgs): Promise<GeneratorResult> {
-  const { cfg, llm } = deps;
+  const { cfg } = deps;
   const system = buildSystemPrompt(cfg);
   const ctx: EditContext = {
     cfg,

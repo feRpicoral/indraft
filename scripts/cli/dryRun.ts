@@ -9,7 +9,6 @@ export function registerDryRun(program: Command): void {
     )
     .action(async () => {
       const result = await runScheduledJob({ dryRun: true });
-      // eslint-disable-next-line no-console
       console.log(JSON.stringify(result, null, 2));
     });
 }

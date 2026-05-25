@@ -17,7 +17,7 @@ export default async function EnrollPage({
           Enroll a passkey
         </h1>
         <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-          One-time setup. Use the device you'll publish from (your phone with Face ID / Touch
+          One-time setup. Use the device you&apos;ll publish from (your phone with Face ID / Touch
           ID is ideal). Without an enrolled passkey, nothing can publish.
         </p>
         <EnrollClient bootstrapToken={token ?? null} />
