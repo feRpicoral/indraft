@@ -1,28 +1,44 @@
 import { z } from 'zod';
 
 /**
- * Process-env schema. All secrets and host-bindings live here. Anything required
- * at runtime is `.min(1)`. Optional providers (Pexels, AI image) are `.optional()`.
+ * Process-env schema. Optional vars accept undefined OR empty string (which we
+ * coerce to undefined) so that unset Vercel env entries don't fail validation
+ * just because they're present-but-empty.
  *
  * The KV bindings (KV_*) are populated automatically by `vercel env pull` and
  * by Vercel at runtime.
  */
+const optionalString = z.preprocess(
+  (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+  z.string().optional(),
+);
+
+const optionalUrl = z.preprocess(
+  (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+  z.string().url().optional(),
+);
+
+const optionalEmail = z.preprocess(
+  (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+  z.string().email().optional(),
+);
+
 const EnvSchema = z.object({
   // LinkedIn
-  LINKEDIN_CLIENT_ID: z.string().min(1).optional(),
-  LINKEDIN_CLIENT_SECRET: z.string().min(1).optional(),
+  LINKEDIN_CLIENT_ID: optionalString,
+  LINKEDIN_CLIENT_SECRET: optionalString,
 
   // LLM
-  OPENROUTER_API_KEY: z.string().min(1).optional(),
-  ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  OPENROUTER_API_KEY: optionalString,
+  ANTHROPIC_API_KEY: optionalString,
 
   // Email
-  RESEND_API_KEY: z.string().min(1).optional(),
+  RESEND_API_KEY: optionalString,
   NOTIFY_TO_ADDRESS: z.string().email(),
   NOTIFY_FROM_ADDRESS: z.string().email(),
 
   // Images
-  PEXELS_API_KEY: z.string().min(1).optional(),
+  PEXELS_API_KEY: optionalString,
 
   // Magic links + auth
   MAGIC_LINK_SIGNING_SECRET: z.string().min(32, 'Use a long random string (≥32 chars)'),
@@ -30,17 +46,20 @@ const EnvSchema = z.object({
 
   // Cron + bootstrap
   CRON_SECRET: z.string().min(1),
-  ENROLLMENT_BOOTSTRAP_TOKEN: z.string().min(1).optional(),
+  ENROLLMENT_BOOTSTRAP_TOKEN: optionalString,
 
   // Vercel KV
-  KV_REST_API_URL: z.string().url().optional(),
-  KV_REST_API_TOKEN: z.string().optional(),
-  KV_REST_API_READ_ONLY_TOKEN: z.string().optional(),
-  KV_URL: z.string().optional(),
+  KV_REST_API_URL: optionalUrl,
+  KV_REST_API_TOKEN: optionalString,
+  KV_REST_API_READ_ONLY_TOKEN: optionalString,
+  KV_URL: optionalString,
 
   // App URL (used to build magic links)
-  APP_URL: z.string().url().optional(),
+  APP_URL: optionalUrl,
 });
+
+// keep optionalEmail unused-but-exported in case future routes need it
+void optionalEmail;
 
 export type Env = z.infer<typeof EnvSchema>;
 
