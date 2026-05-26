@@ -7,6 +7,7 @@ const baseDraft: Draft = {
   version: 1,
   status: 'PENDING_REVIEW',
   body: 'Original',
+  content_kind: 'text',
   hashtags: ['original'],
   mentions: [],
   pillar: 'fullstack',
@@ -18,6 +19,7 @@ const baseDraft: Draft = {
 
 const baseOutput: DraftOutput = {
   body: 'New body',
+  content_kind: 'text',
   needs_image: false,
   image_source: 'none',
   link_placement: 'none',

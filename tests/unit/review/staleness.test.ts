@@ -13,6 +13,7 @@ const mk = (hoursAgo: number): Draft => ({
   pillar: 'x',
   source_url: 'https://x',
   conversation: [],
+  content_kind: 'text',
   created_at: 0,
   updated_at: Date.now() - hoursAgo * ONE_HOUR_MS,
 });

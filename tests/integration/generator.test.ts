@@ -161,6 +161,7 @@ describe('generator.edit', () => {
     pillar: 'fullstack',
     source_url: 'https://example.com/x',
     conversation: [],
+    content_kind: 'text',
     created_at: 0,
     updated_at: 0,
   };
