@@ -1,4 +1,6 @@
-import type { Draft, DraftArticle, DraftOutput, EditTurn } from '../types';
+import type { Config } from '../config/schema';
+import type { Draft, DraftArticle, DraftMedia, DraftOutput, EditTurn } from '../types';
+import { selectMedia } from '../media';
 
 /**
  * Pure reducer for one edit turn. Given the current draft, the user's
@@ -74,4 +76,25 @@ export function buildEditPatch(args: EditApplyArgs): Partial<Draft> {
     patch.media = undefined;
   }
   return patch;
+}
+
+/**
+ * Resolve the media slot for a chat edit when the model asked for a stock or
+ * AI image. Owner uploads still flow through /api/review/upload-image — when
+ * the model returns `image_source: 'owner'` it means "user already has or
+ * will provide one", so we deliberately do nothing and the existing
+ * `draft.media` is preserved by buildEditPatch.
+ *
+ * Returns the media record to attach, or undefined when nothing applies (kind
+ * isn't single_image, source isn't stock/ai, or the provider couldn't supply
+ * an image — Pexels miss, AI gated off, mime/size cap hit, etc.). The route
+ * handler should only override `patch.media` when this returns non-undefined.
+ */
+export async function resolveChatEditMedia(
+  output: DraftOutput,
+  cfg: Config,
+): Promise<DraftMedia | undefined> {
+  if (output.content_kind !== 'single_image') return undefined;
+  if (output.image_source !== 'stock' && output.image_source !== 'ai') return undefined;
+  return selectMedia(output, cfg);
 }
