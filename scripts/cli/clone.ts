@@ -20,12 +20,14 @@ export function registerClone(program: Command): void {
       }
       const cloned = await createDraft({
         body: source.body,
+        content_kind: source.content_kind,
         hashtags: source.hashtags,
         mentions: source.mentions,
         pillar: source.pillar,
         source_url: source.source_url,
         conversation: [],
         ...(source.media ? { media: source.media } : {}),
+        ...(source.article ? { article: source.article } : {}),
         ...(source.link ? { link: source.link } : {}),
         ...(source.verbatim_ranges ? { verbatim_ranges: source.verbatim_ranges } : {}),
       });

@@ -120,7 +120,7 @@ export interface Draft {
 /** Output shape the generator must produce (parsed from LLM JSON). */
 export interface DraftOutput {
   body: string;
-  /** Which kind of post the model chose. Defaults to text/single_image legacy semantics. */
+  /** Which kind of post the model chose. */
   content_kind: ContentKind;
   /** When content_kind === 'article'. Title is required; thumbnail is fetched server-side. */
   article?: {

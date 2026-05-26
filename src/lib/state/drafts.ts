@@ -26,15 +26,14 @@ export class MissingPublishProofError extends Error {
 
 export type CreateDraftInput = Omit<
   Draft,
-  'id' | 'version' | 'created_at' | 'updated_at' | 'status' | 'content_kind'
-> & { content_kind?: ContentKind };
+  'id' | 'version' | 'created_at' | 'updated_at' | 'status'
+>;
 
 export async function createDraft(input: CreateDraftInput): Promise<Draft> {
   const kv = getKv();
   const now = Date.now();
   const draft: Draft = {
     ...input,
-    content_kind: input.content_kind ?? (input.media ? 'single_image' : 'text'),
     id: newId('draft'),
     version: 1,
     status: 'DRAFTED',

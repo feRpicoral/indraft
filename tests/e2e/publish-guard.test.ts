@@ -31,6 +31,7 @@ beforeEach(() => {
 
 const fresh = () => ({
   body: 'Hello world',
+  content_kind: 'text' as const,
   hashtags: [],
   mentions: [],
   pillar: 'fullstack',

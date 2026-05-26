@@ -49,6 +49,7 @@ class StubLLM implements LLMProvider {
 
 const goodResponse = JSON.stringify({
   body: 'A specific, opinionated take about TypeScript 6 ergonomics. I migrated my side project today and discovered the stricter inference catches a real bug I had been carrying.',
+  content_kind: 'text',
   needs_image: false,
   image_source: 'none',
   link_placement: 'none',
@@ -60,6 +61,7 @@ const goodResponse = JSON.stringify({
 
 const badResponseLinter = JSON.stringify({
   body: "Let's dive in to the world of TypeScript 6. In today's fast-paced industry, this is a real game-changer that you won't want to miss.",
+  content_kind: 'text',
   needs_image: false,
   image_source: 'none',
   link_placement: 'none',
@@ -182,6 +184,7 @@ describe('generator.edit', () => {
   it('passes verbatim_ranges when the model produces them', async () => {
     const verbatimResp = JSON.stringify({
       body: 'A custom opener — that the user wrote verbatim — sits inside this updated draft, accompanied by my own commentary on the broader context.',
+      content_kind: 'text',
       needs_image: false,
       image_source: 'none',
       link_placement: 'none',

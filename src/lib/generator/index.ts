@@ -93,13 +93,7 @@ async function runWithRetry(
     });
     let output: DraftOutput;
     try {
-      const parsed = parseJson(res.text, DraftOutputSchema);
-      // Zod's ZodEffects (from superRefine) loses the `.default('text')` in
-      // its output-type inference, so normalize content_kind explicitly here.
-      output = {
-        ...parsed,
-        content_kind: parsed.content_kind ?? (parsed.article ? 'article' : 'text'),
-      };
+      output = parseJson(res.text, DraftOutputSchema);
     } catch (err) {
       if (err instanceof LlmJsonParseError && attempt < maxRetries) {
         log.warn('generator parse failure; retrying', { attempt, error: err.message });
