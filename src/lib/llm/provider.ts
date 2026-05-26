@@ -16,7 +16,13 @@ export interface TextPart {
   text: string;
 }
 
-export type MessagePart = TextPart; // expand later for images if needed
+export interface ImagePart {
+  type: 'image_url';
+  /** Either a public URL or a `data:image/...;base64,…` data URL. */
+  image_url: { url: string };
+}
+
+export type MessagePart = TextPart | ImagePart;
 
 export interface ChatMessage {
   role: Role;

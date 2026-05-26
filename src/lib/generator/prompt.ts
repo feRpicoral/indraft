@@ -25,7 +25,7 @@ export function buildSystemPrompt(cfg: Config): string {
     '- No "Let\'s dive in", "I\'m thrilled to share", "In today\'s fast-paced", "game-changer", "it\'s not just X, it\'s Y".',
     '- No rule-of-three padding ("fast, easy, and powerful").',
     '- No "buzzword soup" — revolutionary / leverage / synergy / unleash / world-class / cutting-edge.',
-    '- 3–5 hashtags max, trailing block only, never mid-sentence.',
+    '- Hashtags go in the `hashtags` JSON field ONLY (3–5 of them). Do NOT include them in the body — not at the end, not mid-sentence, not anywhere.',
     '- ≤1 emoji.',
     'Output:',
     '- STRICT JSON only — no markdown fences, no commentary. Schema:',

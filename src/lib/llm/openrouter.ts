@@ -93,6 +93,10 @@ export class OpenRouterProvider implements LLMProvider {
    * is true, the message content is converted to an array form with a final
    * `cache_control: ephemeral` marker — Anthropic models routed through
    * OpenRouter honor this for prompt caching.
+   *
+   * Multimodal: image parts pass through as `{type:'image_url', image_url:{url}}`.
+   * cache_control is only attached to the last *text* part so vision blocks
+   * don't get marked cacheable (they typically change every turn).
    */
   private toMessage(m: ChatMessage, cacheBreak: boolean): OpenRouterMessage {
     if (typeof m.content === 'string') {
@@ -102,12 +106,21 @@ export class OpenRouterProvider implements LLMProvider {
         content: [{ type: 'text', text: m.content, cache_control: { type: 'ephemeral' } }],
       };
     }
-    // Already an array of parts; attach cache_control to the last part.
-    const parts = m.content.map((p) => ({ type: p.type, text: p.text }) as OpenRouterPart);
-    if (cacheBreak && parts.length > 0) {
-      const lastIdx = parts.length - 1;
-      const lastPart = parts[lastIdx]!;
-      parts[lastIdx] = { ...lastPart, cache_control: { type: 'ephemeral' } };
+    const parts: OpenRouterPart[] = m.content.map((p) => {
+      if (p.type === 'image_url') {
+        return { type: 'image_url', image_url: { url: p.image_url.url } };
+      }
+      return { type: 'text', text: p.text };
+    });
+    if (cacheBreak) {
+      // Attach cache_control to the last text part (vision parts are skipped).
+      for (let i = parts.length - 1; i >= 0; i--) {
+        const part = parts[i];
+        if (part && part.type === 'text') {
+          parts[i] = { ...part, cache_control: { type: 'ephemeral' } };
+          break;
+        }
+      }
     }
     return { role: m.role, content: parts };
   }
@@ -115,11 +128,9 @@ export class OpenRouterProvider implements LLMProvider {
 
 // --- OpenRouter (OpenAI-compatible) wire types ---
 
-interface OpenRouterPart {
-  type: 'text';
-  text: string;
-  cache_control?: { type: 'ephemeral' };
-}
+type OpenRouterPart =
+  | { type: 'text'; text: string; cache_control?: { type: 'ephemeral' } }
+  | { type: 'image_url'; image_url: { url: string } };
 
 interface OpenRouterMessage {
   role: 'user' | 'assistant' | 'system';

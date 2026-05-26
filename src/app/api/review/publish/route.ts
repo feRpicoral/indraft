@@ -95,6 +95,7 @@ export async function POST(req: Request) {
     });
     const result = await publisher.publish({
       body: published.body,
+      ...(published.hashtags.length > 0 ? { hashtags: published.hashtags } : {}),
       ...(published.media?.bytes && published.media.mime
         ? {
             image: {

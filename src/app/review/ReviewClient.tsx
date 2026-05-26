@@ -29,7 +29,8 @@ export default function ReviewClient({ initialDraft, pillars, stale }: Props) {
   async function submitEdit(message: string, imageFile?: File, pastedUrl?: string) {
     setBusy(true);
     try {
-      let imageUrl: string | undefined;
+      // 1) If an image is attached, upload it first. The image is attached to
+      // the draft (and visible to the LLM on the next edit call from draft.media).
       if (imageFile) {
         const form = new FormData();
         form.append('draft_id', draft.id);
@@ -40,13 +41,14 @@ export default function ReviewClient({ initialDraft, pillars, stale }: Props) {
           if (j.draft) setDraft(j.draft);
         }
       }
+      // 2) Then run the chat edit. The edit endpoint reads draft.media from KV
+      // and passes it through to the multimodal LLM call.
       const editRes = await fetch('/api/review/edit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           draft_id: draft.id,
           message,
-          ...(imageUrl !== undefined ? { imageUrl } : {}),
           ...(pastedUrl !== undefined ? { pastedUrl } : {}),
         }),
       });

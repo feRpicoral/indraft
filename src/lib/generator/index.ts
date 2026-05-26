@@ -4,6 +4,7 @@ import type { LLMProvider } from '../llm/provider';
 import { parseJson, LlmJsonParseError } from '../llm/parse';
 import { lint } from '../linter';
 import { log } from '../util/logger';
+import { stripTrailingHashtagBlock, mergeHashtags } from '../util/hashtag';
 import { DraftOutputSchema } from './schema';
 import { buildDraftMessages, buildSystemPrompt } from './prompt';
 import { buildEditMessages, type EditContext } from './editPrompt';
@@ -24,7 +25,6 @@ export interface EditArgs {
   current: Draft;
   message: string;
   sources: SourceItem[];
-  imageUrl?: string;
   pastedUrl?: string;
   pastedSummary?: string;
 }
@@ -64,7 +64,6 @@ export async function edit(deps: GeneratorDeps, args: EditArgs): Promise<Generat
     sources: args.sources,
     current: args.current,
     message: args.message,
-    ...(args.imageUrl !== undefined ? { imageUrl: args.imageUrl } : {}),
     ...(args.pastedUrl !== undefined ? { pastedUrl: args.pastedUrl } : {}),
     ...(args.pastedSummary !== undefined ? { pastedSummary: args.pastedSummary } : {}),
   };
@@ -101,6 +100,17 @@ async function runWithRetry(
         continue;
       }
       throw err;
+    }
+    // Safety net: even with explicit prompt instructions, models sometimes
+    // append a trailing #tag block to the body. Lift it into the hashtags
+    // array and clean the body so the UI never shows tags twice.
+    const stripped = stripTrailingHashtagBlock(output.body);
+    if (stripped.body !== output.body) {
+      output = {
+        ...output,
+        body: stripped.body,
+        hashtags: mergeHashtags(output.hashtags, stripped.extracted),
+      };
     }
     const verbatim = output.verbatim_ranges ?? initialVerbatim;
     const lintRes = lint(output.body, cfg.content.linter, verbatim);

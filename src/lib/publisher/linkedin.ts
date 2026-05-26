@@ -122,9 +122,16 @@ export class LinkedInApiPublisher implements Publisher {
     post: PublishInput,
     imageUrn: string | undefined,
   ): Record<string, unknown> {
-    // Append the link to the body when caller wants it inline. Comment-placement
-    // is handled by a separate addComment call by the route, not here.
+    // Compose: body + optional hashtag block + optional inline link.
+    // Hashtags live in their own trailing block; the body itself never carries them.
+    // Comment-placement is handled by a separate addComment call by the route.
     let commentary = post.body;
+    if (post.hashtags && post.hashtags.length > 0) {
+      const tagLine = post.hashtags
+        .map((t) => `#${t.replace(/^#+/, '')}`)
+        .join(' ');
+      commentary = `${commentary}\n\n${tagLine}`;
+    }
     if (post.link) {
       commentary = `${commentary}\n\n${post.link}`;
     }

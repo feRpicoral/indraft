@@ -24,6 +24,8 @@ const BodySchema = z.object({
   pillar: z.string().min(1).optional(),
   link_url: z.string().url().nullable().optional(),
   link_placement: z.enum(['none', 'body', 'comment']).optional(),
+  /** Set to true to remove the currently attached image. */
+  remove_media: z.boolean().optional(),
 });
 
 export async function POST(req: Request) {
@@ -57,6 +59,9 @@ export async function POST(req: Request) {
     patch.hashtags = parsed.hashtags.map((h) => h.replace(/^#+/, ''));
   }
   if (parsed.pillar !== undefined) patch.pillar = parsed.pillar;
+  if (parsed.remove_media) {
+    patch.media = undefined;
+  }
   if (parsed.link_url !== undefined || parsed.link_placement !== undefined) {
     if (parsed.link_url === null || parsed.link_placement === 'none') {
       patch.link = undefined;

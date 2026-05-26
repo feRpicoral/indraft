@@ -3,6 +3,8 @@ export interface PublishInput {
   image?: { bytes?: string; url?: string; mime: string; alt?: string };
   /** When set, included in the post body (only if `link_placement === "body"`). */
   link?: string;
+  /** Hashtags to append to the body (without leading `#`). */
+  hashtags?: string[];
 }
 
 export interface PublishResult {

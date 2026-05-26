@@ -15,7 +15,6 @@ export const runtime = 'nodejs';
 const BodySchema = z.object({
   draft_id: z.string(),
   message: z.string().min(1),
-  imageUrl: z.string().url().optional(),
   pastedUrl: z.string().url().optional(),
 });
 
@@ -49,7 +48,6 @@ export async function POST(req: Request) {
         current,
         message: parsed.message,
         sources,
-        ...(parsed.imageUrl !== undefined ? { imageUrl: parsed.imageUrl } : {}),
         ...(parsed.pastedUrl !== undefined ? { pastedUrl: parsed.pastedUrl } : {}),
       },
     );
@@ -57,7 +55,6 @@ export async function POST(req: Request) {
       current,
       userMessage: parsed.message,
       output,
-      ...(parsed.imageUrl !== undefined ? { imageUrl: parsed.imageUrl } : {}),
       ...(parsed.pastedUrl !== undefined ? { pastedUrl: parsed.pastedUrl } : {}),
     });
     const updated = await transition(current.id, 'EDITED', { patch });
