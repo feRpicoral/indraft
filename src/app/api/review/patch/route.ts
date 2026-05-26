@@ -26,6 +26,17 @@ const BodySchema = z.object({
   link_placement: z.enum(['none', 'body', 'comment']).optional(),
   /** Set to true to remove the currently attached image. */
   remove_media: z.boolean().optional(),
+  /** Set to true to remove the article thumbnail. Keeps the article fields. */
+  remove_thumbnail: z.boolean().optional(),
+  /** Switch the post kind. Clears fields belonging to the other kinds. */
+  content_kind: z.enum(['text', 'single_image', 'article']).optional(),
+  /** Article-card fields. Partial; only supplied keys overwrite. */
+  article: z
+    .object({
+      source: z.string().url().optional(),
+      title: z.string().min(1).max(400).optional(),
+    })
+    .optional(),
 });
 
 export async function POST(req: Request) {
@@ -71,6 +82,28 @@ export async function POST(req: Request) {
         placement: parsed.link_placement ?? current.link?.placement ?? 'none',
       };
     }
+  }
+  // Article fields: merge into the existing article record (or create one).
+  if (parsed.article) {
+    const existing = current.article ?? { source: '', title: '' };
+    patch.article = {
+      ...existing,
+      ...(parsed.article.source !== undefined ? { source: parsed.article.source } : {}),
+      ...(parsed.article.title !== undefined ? { title: parsed.article.title } : {}),
+    };
+  }
+  if (parsed.remove_thumbnail) {
+    const existing = patch.article ?? current.article;
+    if (existing) {
+      patch.article = { source: existing.source, title: existing.title };
+    }
+  }
+  // Switching content_kind clears fields that belong to the other kinds so a
+  // stale image or article record doesn't ride along into the publish call.
+  if (parsed.content_kind !== undefined && parsed.content_kind !== current.content_kind) {
+    patch.content_kind = parsed.content_kind;
+    if (parsed.content_kind !== 'single_image') patch.media = undefined;
+    if (parsed.content_kind !== 'article') patch.article = undefined;
   }
 
   if (Object.keys(patch).length === 0) {
