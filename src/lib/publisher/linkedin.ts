@@ -37,26 +37,38 @@ export class LinkedInApiPublisher implements Publisher {
   }
 
   async publish(post: PublishInput): Promise<PublishResult> {
+    // Discriminate on what got passed: article kind first (suppresses image/link),
+    // then single-image, then text.
     let imageUrn: string | undefined;
-    if (post.image?.bytes) {
-      const bytes = Buffer.from(post.image.bytes, 'base64');
+    let thumbnailUrn: string | undefined;
+    if (post.article?.thumbnail?.bytes) {
+      thumbnailUrn = await uploadImage({
+        accessToken: this.accessToken,
+        personUrn: this.personUrn,
+        bytes: Buffer.from(post.article.thumbnail.bytes, 'base64'),
+        mime: post.article.thumbnail.mime,
+        apiVersion: this.apiVersion,
+      });
+    } else if (!post.article && post.image?.bytes) {
       imageUrn = await uploadImage({
         accessToken: this.accessToken,
         personUrn: this.personUrn,
-        bytes,
+        bytes: Buffer.from(post.image.bytes, 'base64'),
         mime: post.image.mime,
         apiVersion: this.apiVersion,
       });
     }
 
-    const body = this.composePost(post, imageUrn);
+    const body = this.composePost(post, imageUrn, thumbnailUrn);
 
     log.info('linkedin publish: sending', {
+      kind: post.article ? 'article' : imageUrn ? 'single_image' : 'text',
       commentary_len: typeof body.commentary === 'string' ? body.commentary.length : -1,
       body_len: post.body.length,
       hashtag_count: post.hashtags?.length ?? 0,
       has_image: !!imageUrn,
-      has_link: !!post.link,
+      has_thumbnail: !!thumbnailUrn,
+      has_link: !!post.link && !post.article,
     });
 
     const res = await fetchWithRetry(`${LI_BASE}/posts`, {
@@ -131,6 +143,7 @@ export class LinkedInApiPublisher implements Publisher {
   private composePost(
     post: PublishInput,
     imageUrn: string | undefined,
+    thumbnailUrn: string | undefined,
   ): Record<string, unknown> {
     // Compose: body + optional hashtag block + optional inline link. Everything
     // goes through Little Text Format escaping because LinkedIn silently truncates
@@ -143,7 +156,8 @@ export class LinkedInApiPublisher implements Publisher {
       const tagLine = post.hashtags.map(hashtagTemplate).join(' ');
       commentary = `${commentary}\n\n${tagLine}`;
     }
-    if (post.link) {
+    // Article posts render their source inside the card; suppress inline link.
+    if (post.link && !post.article) {
       commentary = `${commentary}\n\n${escapeLittleTextFormat(post.link)}`;
     }
 
@@ -160,7 +174,18 @@ export class LinkedInApiPublisher implements Publisher {
       isReshareDisabledByAuthor: false,
     };
 
-    if (imageUrn) {
+    if (post.article) {
+      // Article-content rendering. Title required; thumbnail optional. When the
+      // thumbnail is absent LinkedIn still renders a card (title + source domain).
+      const article: Record<string, unknown> = {
+        source: post.article.source,
+        title: post.article.title,
+      };
+      if (thumbnailUrn) {
+        article.thumbnail = thumbnailUrn;
+      }
+      base.content = { article };
+    } else if (imageUrn) {
       base.content = {
         media: { id: imageUrn, altText: post.image?.alt ?? '' },
       };
