@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import type { ReactNode } from 'react';
 
-const GITHUB_URL = 'https://github.com/feRpicoral/in-draft';
+const GITHUB_URL = 'https://github.com/feRpicoral/indraft';
 
 export default function Home() {
   return (

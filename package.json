@@ -1,15 +1,15 @@
 {
-  "name": "in-draft",
+  "name": "indraft",
   "version": "0.1.0",
   "description": "Personal LinkedIn post assistant: collects current news, drafts opinionated posts in your voice, lets you edit conversationally, and publishes only after a passkey assertion.",
   "license": "MIT",
-  "homepage": "https://github.com/feRpicoral/in-draft#readme",
+  "homepage": "https://github.com/feRpicoral/indraft#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/feRpicoral/in-draft.git"
+    "url": "git+https://github.com/feRpicoral/indraft.git"
   },
   "bugs": {
-    "url": "https://github.com/feRpicoral/in-draft/issues"
+    "url": "https://github.com/feRpicoral/indraft/issues"
   },
   "engines": {
     "node": ">=24"

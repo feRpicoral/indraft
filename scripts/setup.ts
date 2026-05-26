@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { confirm, input, password } from '@inquirer/prompts';
 
-const REPO_SLUG = 'feRpicoral/in-draft';
+const REPO_SLUG = 'feRpicoral/indraft';
 
 interface StepResult {
   name: string;

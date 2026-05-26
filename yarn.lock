@@ -4409,9 +4409,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"in-draft@workspace:.":
+"indraft@workspace:.":
   version: 0.0.0-use.local
-  resolution: "in-draft@workspace:."
+  resolution: "indraft@workspace:."
   dependencies:
     "@inquirer/prompts": "npm:^7.0.0"
     "@simplewebauthn/browser": "npm:^11.0.0"

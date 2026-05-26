@@ -20,7 +20,7 @@ export async function fetchFeed(
   let res: Response;
   try {
     res = await fetchWithRetry(url, {
-      headers: { 'User-Agent': 'InDraft/1.0 (+https://github.com/feRpicoral/in-draft)' },
+      headers: { 'User-Agent': 'InDraft/1.0 (+https://github.com/feRpicoral/indraft)' },
       retries: 1,
       timeoutMs: 15_000,
     });
