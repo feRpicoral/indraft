@@ -6,10 +6,21 @@ import { k } from './keys';
 /**
  * Allowed state-machine transitions. Anything not listed is rejected by
  * `transition()`. The publish-guard invariant relies on this table.
+ *
+ * Publish is a two-step flow:
+ *   PENDING_REVIEW → PUBLISHING → PUBLISHED      (happy path)
+ *                              → PUBLISH_FAILED  (LinkedIn rejected the post)
+ *   PUBLISH_FAILED → PUBLISHING                  (operator retries with a fresh assertion)
+ *                  → DISCARDED                   (operator gives up)
+ *
+ * The intermediate PUBLISHING state is what keeps a publisher failure from
+ * stranding a draft as terminal PUBLISHED with no URN.
  */
 const ALLOWED: Record<DraftStatus, readonly DraftStatus[]> = {
   DRAFTED: ['PENDING_REVIEW', 'DISCARDED'],
-  PENDING_REVIEW: ['PUBLISHED', 'DISCARDED', 'EDITED', 'STALE'],
+  PENDING_REVIEW: ['PUBLISHING', 'DISCARDED', 'EDITED', 'STALE'],
+  PUBLISHING: ['PUBLISHED', 'PUBLISH_FAILED'],
+  PUBLISH_FAILED: ['PUBLISHING', 'DISCARDED'],
   EDITED: ['DRAFTED'],
   STALE: ['DRAFTED', 'DISCARDED'],
   PUBLISHED: [],
@@ -22,6 +33,10 @@ export class TransitionError extends Error {
 
 export class MissingPublishProofError extends Error {
   override name = 'MissingPublishProofError';
+}
+
+export class MissingPublishedUrnError extends Error {
+  override name = 'MissingPublishedUrnError';
 }
 
 export type CreateDraftInput = Omit<
@@ -65,11 +80,15 @@ interface TransitionOpts {
   /** Partial fields to write atomically with the status change. */
   patch?: Partial<Draft>;
   /**
-   * Required when transitioning to PUBLISHED. Opaque proof token derived from
+   * Required when transitioning to PUBLISHING. Opaque proof token derived from
    * a verified WebAuthn assertion. The state layer never validates this — it
    * only enforces presence. The publish route is responsible for the verify.
    */
   publishProof?: string;
+  /** Required when transitioning PUBLISHING → PUBLISHED. */
+  publishedUrn?: string;
+  /** Optional error captured when transitioning to PUBLISH_FAILED. */
+  publishError?: string;
 }
 
 /**
@@ -94,9 +113,14 @@ export async function transition(
       `illegal transition ${current.status} → ${to} for draft ${id}`,
     );
   }
-  if (to === 'PUBLISHED' && !opts.publishProof) {
+  if (to === 'PUBLISHING' && !opts.publishProof) {
     throw new MissingPublishProofError(
       `publish requires a verified WebAuthn assertion proof`,
+    );
+  }
+  if (to === 'PUBLISHED' && !opts.publishedUrn) {
+    throw new MissingPublishedUrnError(
+      `PUBLISHED requires the LinkedIn URN returned by the publisher`,
     );
   }
 
@@ -112,6 +136,11 @@ export async function transition(
     version: newVersion,
     updated_at: now,
     ...(opts.publishProof ? { publishProof: opts.publishProof } : {}),
+    ...(opts.publishedUrn ? { publishedUrn: opts.publishedUrn } : {}),
+    ...(to === 'PUBLISHING' ? { publish_attempted_at: now } : {}),
+    ...(to === 'PUBLISH_FAILED' && opts.publishError !== undefined
+      ? { publishError: opts.publishError }
+      : {}),
   };
 
   await kv.set(k.draft(id), next);

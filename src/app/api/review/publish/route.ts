@@ -27,14 +27,20 @@ const BodySchema = z.object({
  * The single publish path. Enforces the publish-guard invariant:
  *
  *   - session cookie must bind to this draft id
- *   - draft must be PENDING_REVIEW
+ *   - draft must be PENDING_REVIEW (first attempt) or PUBLISH_FAILED (retry)
  *   - posted `version` must match draft.version (no stale assertions)
  *   - WebAuthn assertion must verify against the challenge derived from
  *     (id, version, body) — captured assertions cannot be replayed against a
  *     different draft state.
  *
- * Anything else → 401/409. Only when ALL pass do we transition to PUBLISHED
- * (with a publishProof) and call the LinkedIn publisher.
+ * Anything else → 401/409. On success we move the draft through:
+ *   PENDING_REVIEW/PUBLISH_FAILED → PUBLISHING → PUBLISHED (with URN).
+ * On publisher rejection we move to PUBLISH_FAILED so the operator can retry
+ * with a fresh assertion against the same body+version.
+ *
+ * Comment failures after a successful post-create are NOT fatal — the post is
+ * already live on LinkedIn; retrying would duplicate it. Those surface as a
+ * warning in the response body but the draft is still PUBLISHED with the URN.
  */
 export async function POST(req: Request) {
   let parsed;
@@ -53,7 +59,9 @@ export async function POST(req: Request) {
 
   const draft = await getDraft(parsed.draft_id);
   if (!draft) return new NextResponse('draft not found', { status: 404 });
-  if (draft.status !== 'PENDING_REVIEW') return new NextResponse('draft not in PENDING_REVIEW', { status: 409 });
+  if (draft.status !== 'PENDING_REVIEW' && draft.status !== 'PUBLISH_FAILED') {
+    return new NextResponse(`draft not in a publishable state (status=${draft.status})`, { status: 409 });
+  }
   if (draft.version !== parsed.version) return new NextResponse('stale version', { status: 409 });
 
   const expected = challengeFor(draft);
@@ -85,62 +93,86 @@ export async function POST(req: Request) {
   const token = await getLinkedInToken();
   if (!token) return new NextResponse('linkedin token missing', { status: 412 });
 
-  // Transition first so a publisher failure leaves the draft in PUBLISHED but
-  // with no URN. We surface failures via the response body, and the operator
-  // can manually retry the LinkedIn call against the URN.
-  const published = await transition(draft.id, 'PUBLISHED', { publishProof: proof });
+  // Move to PUBLISHING. If the LinkedIn call below fails, we'll land in
+  // PUBLISH_FAILED — the draft remains retryable with a fresh assertion.
+  const publishing = await transition(draft.id, 'PUBLISHING', { publishProof: proof });
 
+  const publisher = new LinkedInApiPublisher({
+    accessToken: token.access_token,
+    personUrn: token.person_urn,
+  });
+
+  // Article kind: build the article payload and, if no thumbnail was uploaded
+  // by the owner, try the OG image of the source URL. Falling back to a
+  // thumbnail-less card if OG fetch fails is fine — LinkedIn renders the
+  // card as title + domain in that case.
+  let articleInput: Awaited<ReturnType<typeof buildArticleInput>> | undefined;
+  if (publishing.content_kind === 'article' && publishing.article) {
+    articleInput = await buildArticleInput(publishing.article);
+  }
+
+  let postResult: { urn: string };
   try {
-    const publisher = new LinkedInApiPublisher({
-      accessToken: token.access_token,
-      personUrn: token.person_urn,
-    });
-    // Article kind: build the article payload and, if no thumbnail was uploaded
-    // by the owner, try the OG image of the source URL. Falling back to a
-    // thumbnail-less card if OG fetch fails is fine — LinkedIn renders the
-    // card as title + domain in that case.
-    let articleInput: Awaited<ReturnType<typeof buildArticleInput>> | undefined;
-    if (published.content_kind === 'article' && published.article) {
-      articleInput = await buildArticleInput(published.article);
-    }
-
-    const result = await publisher.publish({
-      body: published.body,
-      ...(published.hashtags.length > 0 ? { hashtags: published.hashtags } : {}),
+    postResult = await publisher.publish({
+      body: publishing.body,
+      ...(publishing.hashtags.length > 0 ? { hashtags: publishing.hashtags } : {}),
       ...(articleInput ? { article: articleInput } : {}),
       // Single-image content only when not an article post.
-      ...(published.content_kind !== 'article' &&
-      published.media?.bytes &&
-      published.media.mime
+      ...(publishing.content_kind !== 'article' &&
+      publishing.media?.bytes &&
+      publishing.media.mime
         ? {
             image: {
-              bytes: published.media.bytes,
-              mime: published.media.mime,
-              ...(published.media.alt !== undefined ? { alt: published.media.alt } : {}),
+              bytes: publishing.media.bytes,
+              mime: publishing.media.mime,
+              ...(publishing.media.alt !== undefined ? { alt: publishing.media.alt } : {}),
             },
           }
         : {}),
       // Inline link suppressed when posting as an article (source lives in the card).
-      ...(published.content_kind !== 'article' && published.link?.placement === 'body'
-        ? { link: published.link.url }
+      ...(publishing.content_kind !== 'article' && publishing.link?.placement === 'body'
+        ? { link: publishing.link.url }
         : {}),
     });
-    if (published.content_kind !== 'article' && published.link?.placement === 'comment') {
-      await publisher.addComment(result.urn, published.link.url);
-    }
-    await recordPublished({
-      draft_id: published.id,
-      body: published.body,
-      source_url: published.source_url,
-      pillar: published.pillar,
-      urn: result.urn,
-      published_at: Date.now(),
-    });
-    return NextResponse.json({ ok: true, urn: result.urn });
   } catch (err) {
-    log.error('linkedin publish failed after transition', { err: String(err), draft_id: draft.id });
-    return NextResponse.json({ ok: false, error: String(err) }, { status: 502 });
+    const message = String(err);
+    log.error('linkedin publish failed', { err: message, draft_id: draft.id });
+    await transition(publishing.id, 'PUBLISH_FAILED', { publishError: message });
+    return NextResponse.json({ ok: false, error: message }, { status: 502 });
   }
+
+  // Post is live on LinkedIn. Anything that fails from here is non-fatal —
+  // a retry would create a duplicate post.
+  await transition(publishing.id, 'PUBLISHED', { publishedUrn: postResult.urn });
+
+  await recordPublished({
+    draft_id: publishing.id,
+    body: publishing.body,
+    source_url: publishing.source_url,
+    pillar: publishing.pillar,
+    urn: postResult.urn,
+    published_at: Date.now(),
+  });
+
+  let commentWarning: string | undefined;
+  if (publishing.content_kind !== 'article' && publishing.link?.placement === 'comment') {
+    try {
+      await publisher.addComment(postResult.urn, publishing.link.url);
+    } catch (err) {
+      commentWarning = String(err);
+      log.warn('addComment failed after publish — post is live without the link comment', {
+        err: commentWarning,
+        draft_id: draft.id,
+        urn: postResult.urn,
+      });
+    }
+  }
+
+  return NextResponse.json({
+    ok: true,
+    urn: postResult.urn,
+    ...(commentWarning ? { commentWarning } : {}),
+  });
 }
 
 /**

@@ -26,6 +26,12 @@ export async function POST(req: Request) {
   if (draft.status === 'PUBLISHED' || draft.status === 'DISCARDED') {
     return new NextResponse('draft is in a terminal state', { status: 409 });
   }
+  if (draft.status === 'PUBLISHING') {
+    // A publish is currently in flight. Refuse to discard until it lands —
+    // discarding mid-publish would let the post hit LinkedIn while we mark the
+    // draft as gone.
+    return new NextResponse('draft is mid-publish; wait for it to settle', { status: 409 });
+  }
   await transition(parsed.draft_id, 'DISCARDED');
   return NextResponse.json({ ok: true });
 }
