@@ -32,6 +32,7 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^7.0.0",
+    "@next/env": "^16.2.6",
     "@simplewebauthn/browser": "^11.0.0",
     "@simplewebauthn/server": "^11.0.0",
     "@upstash/redis": "^1.38.0",

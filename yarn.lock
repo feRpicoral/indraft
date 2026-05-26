@@ -1353,7 +1353,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@next/env@npm:16.2.6":
+"@next/env@npm:16.2.6, @next/env@npm:^16.2.6":
   version: 16.2.6
   resolution: "@next/env@npm:16.2.6"
   checksum: 10c0/466722ce30a9561d29c08a7ba78091a47fef3644f422d04751c7124a24457ffe11eb25bb6c59c1e1d57735d9c68c58d185cc19ea58befd7a9c5b81dc05ca550d
@@ -4405,6 +4405,7 @@ __metadata:
   resolution: "indraft@workspace:."
   dependencies:
     "@inquirer/prompts": "npm:^7.0.0"
+    "@next/env": "npm:^16.2.6"
     "@simplewebauthn/browser": "npm:^11.0.0"
     "@simplewebauthn/server": "npm:^11.0.0"
     "@tailwindcss/postcss": "npm:^4"
