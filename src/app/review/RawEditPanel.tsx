@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import type { Draft, LinkPlacement } from '@/lib/types';
+import HashtagPills from './HashtagPills';
+import { InfoIcon } from './ui';
 
 interface Props {
   draft: Draft;
@@ -19,9 +21,18 @@ interface PatchPayload {
   link_placement?: LinkPlacement;
 }
 
+const normalize = (tags: string[]): string[] =>
+  tags.map((t) => t.replace(/^#+/, '').toLowerCase());
+
+function tagsEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((t, i) => t === b[i]);
+}
+
 export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Props) {
+  const initialTags = normalize(draft.hashtags);
   const [body, setBody] = useState(draft.body);
-  const [hashtags, setHashtags] = useState(draft.hashtags.join(' '));
+  const [tags, setTags] = useState<string[]>(initialTags);
   const [pillar, setPillar] = useState(draft.pillar);
   const [linkUrl, setLinkUrl] = useState(draft.link?.url ?? '');
   const [linkPlacement, setLinkPlacement] = useState<LinkPlacement>(
@@ -32,11 +43,7 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
 
   const dirty =
     body !== draft.body ||
-    hashtags.trim() !==
-      draft.hashtags
-        .map((h) => `#${h.replace(/^#/, '')}`)
-        .join(' ')
-        .trim() ||
+    !tagsEqual(tags, initialTags) ||
     pillar !== draft.pillar ||
     linkUrl !== (draft.link?.url ?? '') ||
     linkPlacement !== (draft.link?.placement ?? 'none');
@@ -47,24 +54,18 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
     try {
       const patch: PatchPayload = { draft_id: draft.id };
       if (body !== draft.body) patch.body = body;
-      const cleanedTags = hashtags
-        .split(/[,\s]+/)
-        .map((t) => t.trim().replace(/^#+/, ''))
-        .filter(Boolean);
-      const currentTags = draft.hashtags.map((t) => t.replace(/^#+/, ''));
-      if (
-        cleanedTags.length !== currentTags.length ||
-        cleanedTags.some((t, i) => t !== currentTags[i])
-      ) {
-        patch.hashtags = cleanedTags;
-      }
+      if (!tagsEqual(tags, initialTags)) patch.hashtags = tags;
       if (pillar !== draft.pillar) patch.pillar = pillar;
-      if (linkPlacement === 'none' && draft.link) {
-        patch.link_url = null;
-        patch.link_placement = 'none';
-      } else if (linkUrl && (linkUrl !== (draft.link?.url ?? '') || linkPlacement !== (draft.link?.placement ?? 'none'))) {
-        patch.link_url = linkUrl;
-        patch.link_placement = linkPlacement;
+      const placementChanged = linkPlacement !== (draft.link?.placement ?? 'none');
+      const urlChanged = linkUrl !== (draft.link?.url ?? '');
+      if (placementChanged || urlChanged) {
+        if (linkPlacement === 'none' || !linkUrl) {
+          patch.link_url = null;
+          patch.link_placement = 'none';
+        } else {
+          patch.link_url = linkUrl;
+          patch.link_placement = linkPlacement;
+        }
       }
 
       const res = await fetch('/api/review/patch', {
@@ -89,9 +90,7 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
     <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Raw edit</h3>
-        <span className="text-xs text-zinc-500">
-          your edits skip the LLM and the linter
-        </span>
+        <span className="text-xs text-zinc-500">edits skip the LLM and the linter</span>
       </div>
 
       <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
@@ -106,44 +105,47 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
       />
       <p className="mt-1 text-[10px] text-zinc-500">{body.length} / 3000</p>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <div>
-          <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
+      <div className="mt-3">
+        <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
+          <span className="inline-flex items-center gap-1.5">
             Pillar
-          </label>
-          <select
-            value={pillar}
-            onChange={(e) => setPillar(e.target.value)}
-            disabled={busy}
-            className="mt-1 w-full rounded-md border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
-          >
-            {pillars.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-            {!pillars.includes(pillar) && <option value={pillar}>{pillar}</option>}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
-            Hashtags (space or comma separated, # optional)
-          </label>
-          <input
-            type="text"
-            value={hashtags}
-            onChange={(e) => setHashtags(e.target.value)}
-            placeholder="typescript nextjs"
-            disabled={busy}
-            className="mt-1 w-full rounded-md border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
-          />
-        </div>
+            <InfoIcon tip="Which of your content pillars this post belongs to. Used for rotation across runs so you don't post about the same theme back-to-back." />
+          </span>
+        </label>
+        <select
+          value={pillar}
+          onChange={(e) => setPillar(e.target.value)}
+          disabled={busy}
+          className="mt-1 w-full rounded-md border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+        >
+          {pillars.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+          {!pillars.includes(pillar) && <option value={pillar}>{pillar}</option>}
+        </select>
       </div>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_140px]">
+      <div className="mt-3">
+        <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
+          Hashtags
+        </label>
+        <div className="mt-1">
+          <HashtagPills value={tags} onChange={setTags} disabled={busy} />
+        </div>
+        <p className="mt-1 text-[10px] text-zinc-500">
+          Enter / space / comma to add · Backspace on empty input removes the last tag · target 3–5
+        </p>
+      </div>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_160px]">
         <div>
           <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
-            Link URL
+            <span className="inline-flex items-center gap-1.5">
+              Link URL
+              <InfoIcon tip="Optional source URL for the news/article this post is about. Only included in the published post if placement is 'body' or 'comment'." />
+            </span>
           </label>
           <input
             type="url"
@@ -156,7 +158,10 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
         </div>
         <div>
           <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
-            Placement
+            <span className="inline-flex items-center gap-1.5">
+              Placement
+              <InfoIcon tip="Where the link appears: none = omit entirely (recommended; LinkedIn suppresses links), body = appended to the post text, comment = posted as the first comment." />
+            </span>
           </label>
           <select
             value={linkPlacement}

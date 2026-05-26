@@ -7,6 +7,7 @@ import PreviewPane from './PreviewPane';
 import ChatPane from './ChatPane';
 import PublishButton from './PublishButton';
 import RawEditPanel from './RawEditPanel';
+import { Toggle, ConfirmModal } from './ui';
 
 interface Props {
   initialDraft: Draft;
@@ -23,6 +24,7 @@ export default function ReviewClient({ initialDraft, pillars, stale }: Props) {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const [rawEdit, setRawEdit] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   async function submitEdit(message: string, imageFile?: File, pastedUrl?: string) {
     setBusy(true);
@@ -57,8 +59,8 @@ export default function ReviewClient({ initialDraft, pillars, stale }: Props) {
     }
   }
 
-  async function onDiscard() {
-    if (!confirm('Discard this draft?')) return;
+  async function doDiscard() {
+    setConfirmDiscard(false);
     await fetch('/api/review/discard', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -83,24 +85,16 @@ export default function ReviewClient({ initialDraft, pillars, stale }: Props) {
       <div className="mx-auto max-w-5xl">
         <header className="mb-4 flex items-center justify-between">
           <h1 className="text-xl font-semibold">Review draft</h1>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setRawEdit((v) => !v)}
-              className={
-                'text-sm font-medium ' +
-                (rawEdit
-                  ? 'text-zinc-900 dark:text-zinc-100'
-                  : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200')
-              }
+          <div className="flex items-center gap-4">
+            <Toggle
+              checked={rawEdit}
+              onChange={setRawEdit}
+              label="Raw edit"
               disabled={busy}
-              title="Edit body, hashtags, link, and pillar directly without the LLM"
-            >
-              {rawEdit ? 'Done editing' : 'Raw edit'}
-            </button>
+            />
             <button
               type="button"
-              onClick={onDiscard}
+              onClick={() => setConfirmDiscard(true)}
               className="text-sm text-red-600 hover:underline"
               disabled={busy}
             >
@@ -111,11 +105,11 @@ export default function ReviewClient({ initialDraft, pillars, stale }: Props) {
         </header>
         {stale && (
           <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
-            This draft&apos;s source news is more than {/* hours */}48h old. Consider asking the chat
-            to regenerate against current news.
+            This draft&apos;s source news is more than 48h old. Consider asking the chat to
+            regenerate against current news.
           </div>
         )}
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 md:items-start">
           {rawEdit ? (
             <RawEditPanel
               draft={draft}
@@ -132,6 +126,16 @@ export default function ReviewClient({ initialDraft, pillars, stale }: Props) {
           <ChatPane draft={draft} onSubmit={submitEdit} busy={busy} />
         </div>
       </div>
+
+      <ConfirmModal
+        open={confirmDiscard}
+        title="Discard this draft?"
+        message="This moves the draft to DISCARDED and removes it from the pending queue. The action can't be undone."
+        confirmLabel="Discard"
+        confirmTone="danger"
+        onConfirm={doDiscard}
+        onCancel={() => setConfirmDiscard(false)}
+      />
     </main>
   );
 }
