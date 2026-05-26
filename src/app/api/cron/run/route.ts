@@ -12,10 +12,13 @@ export async function GET(request: Request) {
   if (auth !== `Bearer ${env.CRON_SECRET}`) {
     return new NextResponse('unauthorized', { status: 401 });
   }
+  const url = new URL(request.url);
+  const force = url.searchParams.get('force') === '1';
   try {
-    const result = await runScheduledJob({ dryRun: false });
+    const result = await runScheduledJob({ dryRun: false, force });
     return NextResponse.json({
       ok: true,
+      ...(force ? { forced: true } : {}),
       ...(result.created ? { draft_id: result.created.id } : {}),
       ...(result.skipped ? { skipped: result.skipped } : {}),
       ...(result.warnings?.length ? { warnings: result.warnings } : {}),

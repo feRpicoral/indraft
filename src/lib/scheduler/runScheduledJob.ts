@@ -42,6 +42,13 @@ export interface RunOpts {
   dryRun?: boolean;
   /** Override "now" for deterministic test runs. */
   now?: number;
+  /**
+   * Bypass the day-of-week + local-hour filter. Used by manual smoke tests
+   * (`/api/cron/run?force=1` and `yarn indraft run --force`). The daily Vercel
+   * cron never sets this — the filter is what makes a daily UTC trigger fire
+   * only on the configured local days.
+   */
+  force?: boolean;
 }
 
 const CRON_LOCK_TTL_S = 600; // 10 min
@@ -61,15 +68,19 @@ export async function runScheduledJob(opts: RunOpts = {}): Promise<RunResult> {
   }
 
   try {
-    // 2. Day/hour filter (DST-tolerant)
-    const { day, hour } = localDayAndHour(new Date(now), cfg.schedule.timezone);
-    if (!cfg.schedule.days.includes(day)) {
-      log.info('scheduler skip: wrong day', { day });
-      return { skipped: 'wrong_day' };
-    }
-    if (Math.abs(hour - cfg.schedule.hour) > HOUR_TOLERANCE) {
-      log.info('scheduler skip: wrong hour', { hour, target: cfg.schedule.hour });
-      return { skipped: 'wrong_hour' };
+    // 2. Day/hour filter (DST-tolerant). Bypassed by force=true (manual runs).
+    if (!opts.force) {
+      const { day, hour } = localDayAndHour(new Date(now), cfg.schedule.timezone);
+      if (!cfg.schedule.days.includes(day)) {
+        log.info('scheduler skip: wrong day', { day });
+        return { skipped: 'wrong_day' };
+      }
+      if (Math.abs(hour - cfg.schedule.hour) > HOUR_TOLERANCE) {
+        log.info('scheduler skip: wrong hour', { hour, target: cfg.schedule.hour });
+        return { skipped: 'wrong_hour' };
+      }
+    } else {
+      log.info('scheduler force=true; bypassing day/hour filter');
     }
 
     // 3. Token preflight
