@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createHash } from 'node:crypto';
 import { cookies } from 'next/headers';
-import { getDraft, transition } from '@/lib/state/drafts';
+import { getDraft, isStalePublishing, transition } from '@/lib/state/drafts';
 import { requireDraftSession, SessionError } from '@/lib/review/requireSession';
 import { SESSION_COOKIE } from '@/lib/review/session';
 import { challengeFor } from '@/lib/review';
@@ -57,8 +57,27 @@ export async function POST(req: Request) {
     throw err;
   }
 
-  const draft = await getDraft(parsed.draft_id);
+  let draft = await getDraft(parsed.draft_id);
   if (!draft) return new NextResponse('draft not found', { status: 404 });
+
+  // Recover stale PUBLISHING. A PUBLISHING draft means a prior request had
+  // verified the assertion and started the LinkedIn call. If we got here, that
+  // process is no longer alive (otherwise the draft would have settled to
+  // PUBLISHED or PUBLISH_FAILED). After PUBLISHING_TIMEOUT_MS we demote to
+  // PUBLISH_FAILED so the owner can retry instead of being permanently stuck.
+  if (draft.status === 'PUBLISHING') {
+    if (!isStalePublishing(draft)) {
+      return new NextResponse('publish already in flight; wait', { status: 409 });
+    }
+    log.warn('recovering stale PUBLISHING draft', {
+      draft_id: draft.id,
+      publish_attempted_at: draft.publish_attempted_at,
+    });
+    draft = await transition(draft.id, 'PUBLISH_FAILED', {
+      publishError: 'stale PUBLISHING recovered after timeout',
+    });
+  }
+
   if (draft.status !== 'PENDING_REVIEW' && draft.status !== 'PUBLISH_FAILED') {
     return new NextResponse(`draft not in a publishable state (status=${draft.status})`, { status: 409 });
   }

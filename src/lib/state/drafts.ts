@@ -76,6 +76,46 @@ export async function listPending(): Promise<Draft[]> {
   return out;
 }
 
+/**
+ * Drafts the owner can still act on from a review session: PENDING_REVIEW
+ * (the normal queue) plus PUBLISH_FAILED (a previous attempt rejected by
+ * LinkedIn, awaiting retry). A draft drops off the pending sorted set the
+ * moment it leaves PENDING_REVIEW, so PUBLISH_FAILED is otherwise invisible
+ * to `/api/access/request`. Callers should prefer this over `listPending()`
+ * anywhere the goal is "what does the owner still need to act on".
+ */
+export async function listReviewable(): Promise<Draft[]> {
+  const kv = getKv();
+  const pending = await listPending();
+  const failedIds = await kv.smembers(k.draftIndexByStatus('PUBLISH_FAILED'));
+  const seen = new Set(pending.map((d) => d.id));
+  const out: Draft[] = [...pending];
+  for (const id of failedIds) {
+    if (seen.has(id)) continue;
+    const d = await kv.get<Draft>(k.draft(id));
+    if (d) out.push(d);
+  }
+  return out;
+}
+
+/**
+ * A PUBLISHING draft older than this is assumed dead — the request that put
+ * it there crashed, timed out, or was killed mid-flight. Recovery routes use
+ * this to demote the draft to PUBLISH_FAILED so the owner can retry instead
+ * of being permanently locked out.
+ *
+ * LinkedIn's publish API normally returns in well under a second. We use 5
+ * minutes here purely as a "no chance this is still running" floor.
+ */
+export const PUBLISHING_TIMEOUT_MS = 5 * 60 * 1000;
+
+/** True iff the draft is PUBLISHING and the attempt timestamp is past the timeout. */
+export function isStalePublishing(d: Draft, now: number = Date.now()): boolean {
+  if (d.status !== 'PUBLISHING') return false;
+  const attemptedAt = d.publish_attempted_at ?? 0;
+  return now - attemptedAt >= PUBLISHING_TIMEOUT_MS;
+}
+
 interface TransitionOpts {
   /** Partial fields to write atomically with the status change. */
   patch?: Partial<Draft>;
