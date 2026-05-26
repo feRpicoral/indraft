@@ -12,6 +12,12 @@ import { Redis } from '@upstash/redis';
 
 export interface KvAdapter {
   get<T = unknown>(key: string): Promise<T | null>;
+  /**
+   * Atomically read and delete a key. Used by single-use credentials (magic
+   * link nonces, WebAuthn challenges) where a non-atomic get-then-del lets
+   * two concurrent requests both pass the read before either deletion lands.
+   */
+  getdel<T = unknown>(key: string): Promise<T | null>;
   set(key: string, value: unknown, opts?: { ex?: number; nx?: boolean }): Promise<'OK' | null>;
   del(key: string): Promise<number>;
   expire(key: string, seconds: number): Promise<number>;
@@ -60,6 +66,18 @@ class MemoryKv implements KvAdapter {
     this.check(key);
     const v = this.store.get(key);
     return (v as T | undefined) ?? null;
+  }
+
+  async getdel<T = unknown>(key: string): Promise<T | null> {
+    // JS is single-threaded; the read + delete pair below is atomic with
+    // respect to other awaiters on this MemoryKv because nothing else runs
+    // between the synchronous .get and .delete.
+    this.check(key);
+    const v = this.store.get(key);
+    if (v === undefined) return null;
+    this.store.delete(key);
+    this.expiries.delete(key);
+    return v as T;
   }
 
   async set(
@@ -225,6 +243,11 @@ class UpstashKv implements KvAdapter {
   async get<T = unknown>(key: string): Promise<T | null> {
     return (await this.redis.get<T>(key)) ?? null;
   }
+  async getdel<T = unknown>(key: string): Promise<T | null> {
+    // Upstash typing widens to `Record<string, unknown>` for getdel — narrow
+    // back to T here. Redis GETDEL is atomic at the server.
+    return ((await this.redis.getdel(key)) as T | null) ?? null;
+  }
   async set(
     key: string,
     value: unknown,
@@ -303,16 +326,49 @@ class UpstashKv implements KvAdapter {
   }
 }
 
+export class KvNotConfiguredError extends Error {
+  override name = 'KvNotConfiguredError';
+}
+
 /**
  * Choose backend based on env. Upstash Redis when credentials are present;
- * in-memory otherwise. Override with INDRAFT_FORCE_MEMORY_KV=1 for tests.
+ * in-memory otherwise.
+ *
+ * In production we refuse to silently fall back to memory: a Vercel deploy
+ * without `KV_REST_API_URL`/`KV_REST_API_TOKEN` would otherwise drop drafts,
+ * magic-link nonces, passkey challenges, the LinkedIn token, and the cron
+ * lock on every container recycle. Explicit opt-in with
+ * `INDRAFT_FORCE_MEMORY_KV=1` keeps the local/test path working.
  */
 function selectBackend(): KvAdapter {
   if (process.env.INDRAFT_FORCE_MEMORY_KV === '1') return memoryBackend;
   const url = process.env.KV_REST_API_URL;
   const token = process.env.KV_REST_API_TOKEN;
-  if (!url || !token) return memoryBackend;
-  return new UpstashKv(new Redis({ url, token }));
+  if (url && token) {
+    return new UpstashKv(new Redis({ url, token }));
+  }
+  if (isProductionRuntime()) {
+    throw new KvNotConfiguredError(
+      'KV_REST_API_URL and KV_REST_API_TOKEN are required in production. ' +
+        'Set INDRAFT_FORCE_MEMORY_KV=1 only for local/test runs.',
+    );
+  }
+  return memoryBackend;
+}
+
+function isProductionRuntime(): boolean {
+  // Vercel sets VERCEL_ENV to 'production' | 'preview' | 'development' on
+  // every deploy. NODE_ENV alone is too coarse (Next sets it to 'production'
+  // in `next build` too). Fail closed on either signal pointing at prod.
+  if (process.env.VERCEL_ENV === 'production') return true;
+  if (
+    process.env.NODE_ENV === 'production' &&
+    process.env.VERCEL_ENV !== 'preview' &&
+    process.env.VERCEL_ENV !== 'development'
+  ) {
+    return true;
+  }
+  return false;
 }
 
 let _kv: KvAdapter | null = null;
