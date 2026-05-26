@@ -109,6 +109,19 @@ describe('publish-guard invariant', () => {
     await expect(transition(d.id, 'DISCARDED')).rejects.toBeInstanceOf(TransitionError);
   });
 
+  it('content_kind change still requires a publishProof to reach PUBLISHED', async () => {
+    const d = await createDraft({ ...fresh(), content_kind: 'text' });
+    await transition(d.id, 'PENDING_REVIEW');
+    // Switch to article via an EDITED transition — version bumps, no publish gained.
+    const edited = await transition(d.id, 'EDITED', {
+      patch: { content_kind: 'article', article: { source: 'https://x/y', title: 'T' } },
+    });
+    expect(edited.content_kind).toBe('article');
+    expect(edited.version).toBe(2);
+    // Without proof, publish still rejected.
+    await expect(transition(d.id, 'PUBLISHED')).rejects.toBeInstanceOf(MissingPublishProofError);
+  });
+
   it('No scheduled / auto path can publish: scheduler never calls transition(_, PUBLISHED)', async () => {
     // The scheduler only ever transitions DRAFTED → PENDING_REVIEW (and at most
     // creates a fresh draft). It is structurally impossible for it to call
