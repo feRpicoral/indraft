@@ -43,8 +43,12 @@ function out(overrides: Partial<DraftOutput> = {}): DraftOutput {
   };
 }
 
+function fakeImageBytes(): ArrayBuffer {
+  return new TextEncoder().encode('FAKE_IMAGE_BYTES').buffer as ArrayBuffer;
+}
+
 describe('resolveChatEditMedia', () => {
-  it('returns the stock photo when content_kind=single_image and source=stock', async () => {
+  it('returns publishable bytes when content_kind=single_image and source=stock', async () => {
     server.use(
       http.get('https://api.pexels.com/v1/search', () =>
         HttpResponse.json({
@@ -58,12 +62,41 @@ describe('resolveChatEditMedia', () => {
           ],
         }),
       ),
+      http.get('https://images.pexels.com/photo.jpg', () =>
+        new HttpResponse(fakeImageBytes(), {
+          status: 200,
+          headers: { 'content-type': 'image/jpeg' },
+        }),
+      ),
     );
     const media = await resolveChatEditMedia(out(), cfg());
     expect(media).toBeDefined();
     expect(media?.kind).toBe('stock');
     expect(media?.url).toBe('https://images.pexels.com/photo.jpg');
     expect(media?.alt).toBe('Cute kitten');
+    // Publishable fields: the publisher only sends an image when both bytes
+    // and mime are present, so a URL-only return is the bug we're guarding
+    // against. PR #3's selectMedia hydrates these via downloadImageBytes.
+    expect(media?.mime).toBe('image/jpeg');
+    expect(media?.bytes).toBe(Buffer.from('FAKE_IMAGE_BYTES').toString('base64'));
+  });
+
+  it('returns undefined when the Pexels image download fails (no silent URL-only return)', async () => {
+    server.use(
+      http.get('https://api.pexels.com/v1/search', () =>
+        HttpResponse.json({
+          photos: [
+            {
+              id: 1,
+              src: { large: 'https://images.pexels.com/dead.jpg', large2x: '', medium: '', original: '' },
+              alt: 'x',
+            },
+          ],
+        }),
+      ),
+      http.get('https://images.pexels.com/dead.jpg', () => new HttpResponse(null, { status: 404 })),
+    );
+    expect(await resolveChatEditMedia(out(), cfg())).toBeUndefined();
   });
 
   it('returns undefined when content_kind is not single_image', async () => {
