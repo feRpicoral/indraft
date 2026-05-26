@@ -1,13 +1,14 @@
 /**
- * KV adapter. Wraps @vercel/kv for production and falls back to an in-memory
- * implementation for local dev + tests. The interface is intentionally narrow:
- * just the operations the state layer actually needs.
+ * KV adapter. In production, wraps `@upstash/redis` (the Vercel Marketplace
+ * Upstash integration injects `KV_REST_API_URL` and `KV_REST_API_TOKEN`).
+ * In local dev + tests, falls back to an in-memory implementation. The
+ * interface is intentionally narrow: just the operations the state layer
+ * actually needs.
  *
- * We don't use @vercel/kv's full API directly so that the test backend can
- * be a tiny pure-JS shim with no Redis semantics to maintain.
+ * @vercel/kv was deprecated by Vercel in favor of @upstash/redis directly.
  */
 
-import { kv as vercelKv } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
 
 export interface KvAdapter {
   get<T = unknown>(key: string): Promise<T | null>;
@@ -215,14 +216,103 @@ class MemoryKv implements KvAdapter {
 const memoryBackend = new MemoryKv();
 
 /**
- * Choose backend based on env. Real @vercel/kv when credentials are present;
+ * Thin wrapper that conforms `@upstash/redis`'s API to our KvAdapter shape.
+ * The methods we use are nearly 1:1; this exists mainly so tests can swap
+ * in MemoryKv without touching any consumer.
+ */
+class UpstashKv implements KvAdapter {
+  constructor(private readonly redis: Redis) {}
+  async get<T = unknown>(key: string): Promise<T | null> {
+    return (await this.redis.get<T>(key)) ?? null;
+  }
+  async set(
+    key: string,
+    value: unknown,
+    opts?: { ex?: number; nx?: boolean },
+  ): Promise<'OK' | null> {
+    // Upstash uses a discriminated union for set options; build the variant
+    // that matches what the caller asked for. The return type is widened to
+    // `unknown` because the discriminated union doesn't narrow here.
+    let r: unknown;
+    if (opts?.nx && opts.ex) {
+      r = await this.redis.set(key, value, { ex: opts.ex, nx: true });
+    } else if (opts?.nx) {
+      r = await this.redis.set(key, value, { nx: true });
+    } else if (opts?.ex) {
+      r = await this.redis.set(key, value, { ex: opts.ex });
+    } else {
+      r = await this.redis.set(key, value);
+    }
+    return r === 'OK' ? 'OK' : null;
+  }
+  async del(key: string): Promise<number> {
+    return await this.redis.del(key);
+  }
+  async expire(key: string, seconds: number): Promise<number> {
+    return await this.redis.expire(key, seconds);
+  }
+  async sadd(key: string, ...members: string[]): Promise<number> {
+    if (members.length === 0) return 0;
+    const [first, ...rest] = members as [string, ...string[]];
+    return await this.redis.sadd(key, first, ...rest);
+  }
+  async smembers(key: string): Promise<string[]> {
+    return await this.redis.smembers(key);
+  }
+  async srem(key: string, ...members: string[]): Promise<number> {
+    if (members.length === 0) return 0;
+    const [first, ...rest] = members as [string, ...string[]];
+    return await this.redis.srem(key, first, ...rest);
+  }
+  async zadd(
+    key: string,
+    ...entries: Array<{ score: number; member: string }>
+  ): Promise<number> {
+    if (entries.length === 0) return 0;
+    const [first, ...rest] = entries as [
+      { score: number; member: string },
+      ...Array<{ score: number; member: string }>,
+    ];
+    return (await this.redis.zadd(key, first, ...rest)) ?? 0;
+  }
+  async zrange(
+    key: string,
+    start: number,
+    stop: number,
+    opts?: { rev?: boolean },
+  ): Promise<string[]> {
+    const result = await this.redis.zrange(key, start, stop, opts ?? {});
+    return result as string[];
+  }
+  async zrem(key: string, ...members: string[]): Promise<number> {
+    if (members.length === 0) return 0;
+    const [first, ...rest] = members as [string, ...string[]];
+    return await this.redis.zrem(key, first, ...rest);
+  }
+  async lpush(key: string, ...members: string[]): Promise<number> {
+    if (members.length === 0) return 0;
+    const [first, ...rest] = members as [string, ...string[]];
+    return await this.redis.lpush(key, first, ...rest);
+  }
+  async lrange(key: string, start: number, stop: number): Promise<string[]> {
+    return await this.redis.lrange(key, start, stop);
+  }
+  async ltrim(key: string, start: number, stop: number): Promise<'OK'> {
+    await this.redis.ltrim(key, start, stop);
+    return 'OK';
+  }
+}
+
+/**
+ * Choose backend based on env. Upstash Redis when credentials are present;
  * in-memory otherwise. Override with INDRAFT_FORCE_MEMORY_KV=1 for tests.
  */
 function selectBackend(): KvAdapter {
   if (process.env.INDRAFT_FORCE_MEMORY_KV === '1') return memoryBackend;
-  if (!process.env.KV_REST_API_URL) return memoryBackend;
-  // The @vercel/kv client is API-compatible with the subset we use.
-  return vercelKv as unknown as KvAdapter;
+  const url = process.env.KV_REST_API_URL;
+  const token = process.env.KV_REST_API_TOKEN;
+  if (!url || !token) return memoryBackend;
+  return new UpstashKv(new Redis({ url, token }));
 }
 
 let _kv: KvAdapter | null = null;

@@ -34,7 +34,7 @@
     "@inquirer/prompts": "^7.0.0",
     "@simplewebauthn/browser": "^11.0.0",
     "@simplewebauthn/server": "^11.0.0",
-    "@vercel/kv": "^3.0.0",
+    "@upstash/redis": "^1.38.0",
     "commander": "^12.1.0",
     "fast-xml-parser": "^5.8.0",
     "js-yaml": "^4.1.0",
