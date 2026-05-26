@@ -7,8 +7,9 @@ export function registerDryRun(program: Command): void {
     .description(
       'Run collect → draft → lint → notify pipeline without LinkedIn publish or real email',
     )
-    .action(async () => {
-      const result = await runScheduledJob({ dryRun: true });
+    .option('-f, --force', 'Bypass the day-of-week + hour filter (smoke-test any day)')
+    .action(async (opts: { force?: boolean }) => {
+      const result = await runScheduledJob({ dryRun: true, force: opts.force === true });
       console.log(JSON.stringify(result, null, 2));
     });
 }

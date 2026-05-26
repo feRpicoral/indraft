@@ -64,19 +64,23 @@ function eventsToItems(events: GhEvent[]): SourceItem[] {
         category: 'personal',
       });
     } else if (e.type === 'PullRequestEvent' && e.payload?.pull_request) {
+      const pr = e.payload.pull_request;
+      if (!pr.html_url || !pr.title) continue;
       items.push({
-        title: `PR: ${e.payload.pull_request.title}`,
-        url: e.payload.pull_request.html_url,
+        title: `PR: ${pr.title}`,
+        url: pr.html_url,
         summary: `PR in ${repo}`,
         source: 'github',
         published_at: ts,
         category: 'personal',
       });
     } else if (e.type === 'ReleaseEvent' && e.payload?.release) {
+      const rel = e.payload.release;
+      if (!rel.html_url || !rel.name) continue;
       items.push({
-        title: `Release: ${e.payload.release.name}`,
-        url: e.payload.release.html_url,
-        summary: `Released ${e.payload.release.name} in ${repo}`,
+        title: `Release: ${rel.name}`,
+        url: rel.html_url,
+        summary: `Released ${rel.name} in ${repo}`,
         source: 'github',
         published_at: ts,
         category: 'personal',

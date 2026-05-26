@@ -27,6 +27,11 @@ describe('canonicalUrl', () => {
   it('returns input unchanged when not parseable', () => {
     expect(canonicalUrl('not a url')).toBe('not a url');
   });
+  it('returns empty string for undefined / null / empty input (no throw)', () => {
+    expect(canonicalUrl(undefined)).toBe('');
+    expect(canonicalUrl(null)).toBe('');
+    expect(canonicalUrl('')).toBe('');
+  });
 });
 
 describe('dedup', () => {

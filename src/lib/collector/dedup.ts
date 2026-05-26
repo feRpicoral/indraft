@@ -4,8 +4,12 @@ import type { SourceItem } from '../types';
  * Canonicalize a URL for dedup: lowercase host, strip default ports, strip
  * tracking params (utm_*, fbclid, gclid, …), drop trailing slash. Do NOT
  * change the scheme or path beyond that.
+ *
+ * Defensive against non-string input (e.g. an upstream source item produced
+ * with a missing url) — returns '' rather than throwing.
  */
-export function canonicalUrl(raw: string): string {
+export function canonicalUrl(raw: string | undefined | null): string {
+  if (typeof raw !== 'string' || raw.length === 0) return '';
   let u: URL;
   try {
     u = new URL(raw);
@@ -37,6 +41,7 @@ export function dedup(items: SourceItem[]): SourceItem[] {
   const out: SourceItem[] = [];
   for (const it of items) {
     const key = canonicalUrl(it.url);
+    if (!key) continue; // drop items without a usable url
     if (seen.has(key)) continue;
     seen.add(key);
     out.push({ ...it, url: key });
