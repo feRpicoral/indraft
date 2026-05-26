@@ -50,6 +50,14 @@ export class LinkedInApiPublisher implements Publisher {
 
     const body = this.composePost(post, imageUrn);
 
+    log.info('linkedin publish: sending', {
+      commentary_len: typeof body.commentary === 'string' ? body.commentary.length : -1,
+      body_len: post.body.length,
+      hashtag_count: post.hashtags?.length ?? 0,
+      has_image: !!imageUrn,
+      has_link: !!post.link,
+    });
+
     const res = await fetchWithRetry(`${LI_BASE}/posts`, {
       method: 'POST',
       headers: this.headers(),
@@ -69,6 +77,7 @@ export class LinkedInApiPublisher implements Publisher {
       log.warn('linkedin publish: no urn header', { status: res.status });
       throw new Error('LinkedIn publish returned no URN header');
     }
+    log.info('linkedin publish: ok', { urn, status: res.status });
     return { urn };
   }
 

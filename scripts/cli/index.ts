@@ -5,6 +5,7 @@ import { registerRun } from './run';
 import { registerDryRun } from './dryRun';
 import { registerAuth } from './auth';
 import { registerCheckToken } from './checkToken';
+import { registerClone } from './clone';
 
 // Load .env / .env.local / .env.development[.local] with Next.js precedence so
 // `yarn indraft <cmd>` sees the same vars the dev server does. Must run before
@@ -18,6 +19,7 @@ registerRun(program);
 registerDryRun(program);
 registerAuth(program);
 registerCheckToken(program);
+registerClone(program);
 
 program.parseAsync(process.argv).catch((err) => {
   console.error(err);
