@@ -16,6 +16,7 @@ import { listPending } from '@/lib/state/drafts';
 
 const goodLlmResponse = JSON.stringify({
   body: 'Specific, opinionated take about an actual headline. After spending an afternoon with the new release I think the migration story is undersold.',
+  content_kind: 'text',
   needs_image: false,
   image_source: 'none',
   link_placement: 'none',

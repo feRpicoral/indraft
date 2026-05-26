@@ -23,6 +23,21 @@ export type LinkPlacement = 'none' | 'body' | 'comment';
 
 export type ImageSource = 'none' | 'owner' | 'stock' | 'ai';
 
+/**
+ * Discriminator on the kind of post we're publishing. Drives publisher
+ * dispatch and what fields the UI exposes.
+ *
+ * - `text`: commentary only, no media. Default.
+ * - `single_image`: commentary + one image (via `Draft.media`).
+ * - `article`: rich-card link share. Uses `Draft.article`; the link suppression
+ *   workarounds (`link_placement`) don't apply since LinkedIn renders the source
+ *   inside the card.
+ *
+ * `multi_image` is reserved for a later PR; intentionally not listed yet so the
+ * type system flags unhandled cases.
+ */
+export type ContentKind = 'text' | 'single_image' | 'article';
+
 export interface DraftMedia {
   kind: 'owner' | 'stock' | 'ai';
   url?: string;
@@ -35,6 +50,18 @@ export interface DraftMedia {
 export interface DraftLink {
   url: string;
   placement: LinkPlacement;
+}
+
+/**
+ * LinkedIn's ArticleContent shape, minus the fields that don't render in the
+ * published card (description, thumbnailAltText). `source` and `title` are
+ * required at publish; thumbnail is optional and reuses DraftMedia so the
+ * single-image upload primitive carries it.
+ */
+export interface DraftArticle {
+  source: string;
+  title: string;
+  thumbnail?: DraftMedia;
 }
 
 /**
@@ -66,7 +93,12 @@ export interface Draft {
   version: number;
   status: DraftStatus;
   body: string;
+  /** Which kind of post this is. Drives publisher dispatch + UI affordances. */
+  content_kind: ContentKind;
+  /** Single image — only consulted when content_kind === 'single_image'. */
   media?: DraftMedia;
+  /** Article card — only consulted when content_kind === 'article'. */
+  article?: DraftArticle;
   link?: DraftLink;
   hashtags: string[];
   mentions: string[];
@@ -88,6 +120,13 @@ export interface Draft {
 /** Output shape the generator must produce (parsed from LLM JSON). */
 export interface DraftOutput {
   body: string;
+  /** Which kind of post the model chose. */
+  content_kind: ContentKind;
+  /** When content_kind === 'article'. Title is required; thumbnail is fetched server-side. */
+  article?: {
+    source: string;
+    title: string;
+  };
   needs_image: boolean;
   image_source: ImageSource;
   image_query?: string;

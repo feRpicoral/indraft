@@ -135,6 +135,99 @@ describe('LinkedInApiPublisher.publish', () => {
     expect((captured as unknown as { body: { actor: string } }).body.actor).toBe(PERSON_URN);
   });
 
+  it('publishes an article post with thumbnail: image init + put, then post body has content.article', async () => {
+    const calls: string[] = [];
+    server.use(
+      http.post('https://api.linkedin.com/rest/images', async ({ request }) => {
+        const url = new URL(request.url);
+        if (url.searchParams.get('action') !== 'initializeUpload') {
+          return new HttpResponse(null, { status: 400 });
+        }
+        calls.push('init');
+        return HttpResponse.json({
+          value: {
+            uploadUrl: 'https://upload.linkedin.com/thumb',
+            image: 'urn:li:image:thumb-1',
+          },
+        });
+      }),
+      http.put('https://upload.linkedin.com/thumb', () => {
+        calls.push('put');
+        return new HttpResponse(null, { status: 201 });
+      }),
+      http.post('https://api.linkedin.com/rest/posts', async ({ request }) => {
+        calls.push('post');
+        const body = (await request.json()) as {
+          content?: { article?: { source?: string; title?: string; thumbnail?: string }; media?: unknown };
+        };
+        expect(body.content?.article?.source).toBe('https://politico.eu/article');
+        expect(body.content?.article?.title).toBe('Dutch government blocks US takeover');
+        expect(body.content?.article?.thumbnail).toBe('urn:li:image:thumb-1');
+        expect(body.content?.media).toBeUndefined();
+        return new HttpResponse(null, {
+          status: 201,
+          headers: { 'x-restli-id': POST_URN },
+        });
+      }),
+    );
+    const r = await publisher.publish({
+      body: 'Article commentary',
+      article: {
+        source: 'https://politico.eu/article',
+        title: 'Dutch government blocks US takeover',
+        thumbnail: {
+          bytes: Buffer.from('fake-png').toString('base64'),
+          mime: 'image/png',
+          alt: 'cover',
+        },
+      },
+    });
+    expect(r.urn).toBe(POST_URN);
+    expect(calls).toEqual(['init', 'put', 'post']);
+  });
+
+  it('publishes an article post without thumbnail (no upload chain)', async () => {
+    let capturedBody: unknown = null;
+    server.use(
+      http.post('https://api.linkedin.com/rest/posts', async ({ request }) => {
+        capturedBody = await request.json();
+        return new HttpResponse(null, {
+          status: 201,
+          headers: { 'x-restli-id': POST_URN },
+        });
+      }),
+    );
+    await publisher.publish({
+      body: 'Article without thumb',
+      article: { source: 'https://politico.eu/x', title: 'Headline' },
+    });
+    const body = capturedBody as { content?: { article?: { thumbnail?: string } } };
+    expect(body.content?.article?.thumbnail).toBeUndefined();
+  });
+
+  it('article post suppresses image and inline link even when present', async () => {
+    let capturedBody: unknown = null;
+    server.use(
+      http.post('https://api.linkedin.com/rest/posts', async ({ request }) => {
+        capturedBody = await request.json();
+        return new HttpResponse(null, {
+          status: 201,
+          headers: { 'x-restli-id': POST_URN },
+        });
+      }),
+    );
+    await publisher.publish({
+      body: 'Body',
+      article: { source: 'https://example.com/a', title: 'T' },
+      image: { bytes: 'aGk=', mime: 'image/png' },
+      link: 'https://example.com/other',
+    });
+    const body = capturedBody as { commentary: string; content?: { article?: object; media?: object } };
+    expect(body.content?.article).toBeDefined();
+    expect(body.content?.media).toBeUndefined();
+    expect(body.commentary).not.toContain('example.com/other');
+  });
+
   it('healthCheck returns ok for a reachable userinfo endpoint', async () => {
     server.use(
       http.get('https://api.linkedin.com/v2/userinfo', () =>

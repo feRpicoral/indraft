@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import type { Draft, LinkPlacement } from '@/lib/types';
+import type { ContentKind, Draft, LinkPlacement } from '@/lib/types';
 import HashtagPills from './HashtagPills';
 import { InfoIcon } from './ui';
 
@@ -19,6 +19,9 @@ interface PatchPayload {
   pillar?: string;
   link_url?: string | null;
   link_placement?: LinkPlacement;
+  content_kind?: ContentKind;
+  article?: { source?: string; title?: string };
+  remove_thumbnail?: boolean;
 }
 
 const normalize = (tags: string[]): string[] =>
@@ -31,6 +34,7 @@ function tagsEqual(a: string[], b: string[]): boolean {
 
 export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Props) {
   const initialTags = normalize(draft.hashtags);
+  const [contentKind, setContentKind] = useState<ContentKind>(draft.content_kind);
   const [body, setBody] = useState(draft.body);
   const [tags, setTags] = useState<string[]>(initialTags);
   const [pillar, setPillar] = useState(draft.pillar);
@@ -38,24 +42,38 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
   const [linkPlacement, setLinkPlacement] = useState<LinkPlacement>(
     draft.link?.placement ?? 'none',
   );
+  const [articleSource, setArticleSource] = useState(draft.article?.source ?? '');
+  const [articleTitle, setArticleTitle] = useState(draft.article?.title ?? '');
   const [busy, setBusy] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadSlot = contentKind === 'article' ? 'thumbnail' : 'media';
 
   const dirty =
     body !== draft.body ||
     !tagsEqual(tags, initialTags) ||
     pillar !== draft.pillar ||
     linkUrl !== (draft.link?.url ?? '') ||
-    linkPlacement !== (draft.link?.placement ?? 'none');
+    linkPlacement !== (draft.link?.placement ?? 'none') ||
+    contentKind !== draft.content_kind ||
+    articleSource !== (draft.article?.source ?? '') ||
+    articleTitle !== (draft.article?.title ?? '');
 
-  const mediaPreviewSrc =
+  const singleImageSrc =
     draft.media?.url ??
     (draft.media?.bytes && draft.media.mime
       ? `data:${draft.media.mime};base64,${draft.media.bytes}`
       : null);
+
+  const thumbnailSrc =
+    draft.article?.thumbnail?.url ??
+    (draft.article?.thumbnail?.bytes && draft.article.thumbnail.mime
+      ? `data:${draft.article.thumbnail.mime};base64,${draft.article.thumbnail.bytes}`
+      : null);
+
+  const mediaPreviewSrc = contentKind === 'article' ? thumbnailSrc : singleImageSrc;
 
   async function uploadImage(file: File) {
     if (imageBusy) return;
@@ -73,6 +91,7 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
       const form = new FormData();
       form.append('draft_id', draft.id);
       form.append('file', file);
+      form.append('slot', uploadSlot);
       const res = await fetch('/api/review/upload-image', { method: 'POST', body: form });
       if (!res.ok) {
         const msg = await res.text();
@@ -93,10 +112,14 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
     setErr(null);
     setImageBusy(true);
     try {
+      const removePayload =
+        uploadSlot === 'thumbnail'
+          ? { draft_id: draft.id, remove_thumbnail: true }
+          : { draft_id: draft.id, remove_media: true };
       const res = await fetch('/api/review/patch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ draft_id: draft.id, remove_media: true }),
+        body: JSON.stringify(removePayload),
       });
       if (!res.ok) {
         const msg = await res.text();
@@ -119,15 +142,29 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
       if (body !== draft.body) patch.body = body;
       if (!tagsEqual(tags, initialTags)) patch.hashtags = tags;
       if (pillar !== draft.pillar) patch.pillar = pillar;
-      const placementChanged = linkPlacement !== (draft.link?.placement ?? 'none');
-      const urlChanged = linkUrl !== (draft.link?.url ?? '');
-      if (placementChanged || urlChanged) {
-        if (linkPlacement === 'none' || !linkUrl) {
-          patch.link_url = null;
-          patch.link_placement = 'none';
-        } else {
-          patch.link_url = linkUrl;
-          patch.link_placement = linkPlacement;
+      if (contentKind !== draft.content_kind) patch.content_kind = contentKind;
+      if (contentKind === 'article') {
+        const sourceChanged = articleSource !== (draft.article?.source ?? '');
+        const titleChanged = articleTitle !== (draft.article?.title ?? '');
+        if (sourceChanged || titleChanged) {
+          patch.article = {
+            ...(sourceChanged ? { source: articleSource } : {}),
+            ...(titleChanged ? { title: articleTitle } : {}),
+          };
+        }
+      }
+      // Link fields are meaningless for article posts; skip diffing them.
+      if (contentKind !== 'article') {
+        const placementChanged = linkPlacement !== (draft.link?.placement ?? 'none');
+        const urlChanged = linkUrl !== (draft.link?.url ?? '');
+        if (placementChanged || urlChanged) {
+          if (linkPlacement === 'none' || !linkUrl) {
+            patch.link_url = null;
+            patch.link_placement = 'none';
+          } else {
+            patch.link_url = linkUrl;
+            patch.link_placement = linkPlacement;
+          }
         }
       }
 
@@ -158,6 +195,25 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
         <span className="text-xs text-zinc-500">edits skip the LLM and the linter</span>
       </div>
 
+      <div className="mb-3">
+        <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
+          <span className="inline-flex items-center gap-1.5">
+            Content type
+            <InfoIcon tip="text = commentary only. single image = post + 1 image. article = LinkedIn's rich-card link share (no inline link required; the card shows title + thumbnail + source domain). Switching kinds clears fields that don't apply." />
+          </span>
+        </label>
+        <select
+          value={contentKind}
+          onChange={(e) => setContentKind(e.target.value as ContentKind)}
+          disabled={inputsDisabled}
+          className="mt-1 w-full rounded-md border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+        >
+          <option value="text">text — commentary only</option>
+          <option value="single_image">single image — post + 1 image</option>
+          <option value="article">article — rich-card link share</option>
+        </select>
+      </div>
+
       <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
         Body
       </label>
@@ -170,11 +226,53 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
       />
       <p className="mt-1 text-[10px] text-zinc-500">{body.length} / 3000</p>
 
+      {contentKind === 'article' && (
+        <div className="mt-3 space-y-3 rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/60">
+          <div>
+            <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
+              <span className="inline-flex items-center gap-1.5">
+                Article source URL
+                <InfoIcon tip="The article the post is about. LinkedIn renders this as the rich card's clickable destination." />
+              </span>
+            </label>
+            <input
+              type="url"
+              value={articleSource}
+              onChange={(e) => setArticleSource(e.target.value)}
+              placeholder="https://…"
+              disabled={inputsDisabled}
+              className="mt-1 w-full rounded-md border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
+              <span className="inline-flex items-center gap-1.5">
+                Article card title
+                <InfoIcon tip="Bold text shown on the card. Rendered verbatim; LinkedIn does not auto-fetch the page's own title." />
+              </span>
+            </label>
+            <input
+              type="text"
+              value={articleTitle}
+              onChange={(e) => setArticleTitle(e.target.value)}
+              placeholder="What the card says above the domain"
+              maxLength={400}
+              disabled={inputsDisabled}
+              className="mt-1 w-full rounded-md border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+            />
+            <p className="mt-1 text-[10px] text-zinc-500">{articleTitle.length} / 400</p>
+          </div>
+        </div>
+      )}
+
+      {contentKind !== 'text' && (
       <div className="mt-3">
         <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
           <span className="inline-flex items-center gap-1.5">
-            Image
-            <InfoIcon tip="Optional image attached to the post. Uploaded immediately; removing is also immediate. PNG or JPEG, ≤1MB." />
+            {uploadSlot === 'thumbnail' ? 'Article thumbnail' : 'Image'}
+            <InfoIcon tip={uploadSlot === 'thumbnail'
+              ? 'Optional. If omitted, the publisher will try the article URL’s OG image at publish time. PNG or JPEG, ≤1MB.'
+              : 'Optional image attached to the post. Uploaded immediately; removing is also immediate. PNG or JPEG, ≤1MB.'} />
           </span>
         </label>
         {mediaPreviewSrc ? (
@@ -240,6 +338,7 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
           }}
         />
       </div>
+      )}
 
       <div className="mt-3">
         <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
@@ -275,6 +374,7 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
         </p>
       </div>
 
+      {contentKind !== 'article' && (
       <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_160px]">
         <div>
           <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
@@ -311,6 +411,7 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
           </select>
         </div>
       </div>
+      )}
 
       {err && <p className="mt-3 text-xs text-red-600">{err}</p>}
 

@@ -121,12 +121,14 @@ export async function runScheduledJob(opts: RunOpts = {}): Promise<RunResult> {
     // 8. Persist as DRAFTED → PENDING_REVIEW
     const draft = await createDraft({
       body: output.body,
+      content_kind: output.content_kind,
       hashtags: output.hashtags,
       mentions: output.mentions,
       pillar: output.pillar,
       source_url: output.source_url,
       conversation: [],
       ...(media ? { media } : {}),
+      ...(output.article ? { article: output.article } : {}),
       ...(output.link
         ? { link: { url: output.link, placement: output.link_placement } }
         : {}),

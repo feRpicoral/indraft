@@ -21,6 +21,7 @@ beforeEach(() => {
 function freshInput() {
   return {
     body: 'hello world',
+    content_kind: 'text' as const,
     hashtags: [],
     mentions: [],
     pillar: 'fullstack',

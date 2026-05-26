@@ -47,7 +47,7 @@ export async function createDraft(input: CreateDraftInput): Promise<Draft> {
 
 export async function getDraft(id: string): Promise<Draft | null> {
   const kv = getKv();
-  return kv.get<Draft>(k.draft(id));
+  return (await kv.get<Draft>(k.draft(id))) ?? null;
 }
 
 export async function listPending(): Promise<Draft[]> {

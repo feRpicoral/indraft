@@ -80,13 +80,23 @@ function renderEditRequest(ctx: EditContext): string {
     .join('\n\n');
 
   const mediaLine = mediaSummary(current);
+  const articleLines =
+    current.content_kind === 'article' && current.article
+      ? [
+          `article.source: ${current.article.source || '(empty)'}`,
+          `article.title: ${current.article.title || '(empty)'}`,
+          `article.thumbnail: ${current.article.thumbnail ? 'attached' : '(none)'}`,
+        ]
+      : [];
 
   return [
     'CURRENT DRAFT',
     '-------------',
     `version: ${current.version}`,
+    `content_kind: ${current.content_kind}`,
     `pillar: ${current.pillar}`,
     `source_url: ${current.source_url}`,
+    ...articleLines,
     `link: ${current.link ? `${current.link.url} (${current.link.placement})` : '(none)'}`,
     `hashtags: ${current.hashtags.join(', ') || '(none)'}`,
     `media: ${mediaLine}`,
@@ -108,6 +118,7 @@ function renderEditRequest(ctx: EditContext): string {
     'INSTRUCTIONS',
     '------------',
     '- The CURRENT DRAFT body above is authoritative. The owner may have edited it directly outside of this chat. Preserve their exact wording unless the new message explicitly asks for a change.',
+    `- Preserve content_kind ("${current.content_kind}") unless the user explicitly asks to switch kinds. When kind is "article", preserve article.source and article.title above unless the user asks for a topic pivot.`,
     '- Hashtags belong in the `hashtags` JSON field only. Do NOT include them in the body.',
     '- If an image is attached to this message, you can see it. Reference it in the body only when the user asks you to or when its contents directly affect the angle.',
     '- If the user supplied quoted verbatim text (in "..." or backticks), use it verbatim in the body and set verbatim_ranges so the linter skips it.',

@@ -10,6 +10,8 @@ import { verifyAuthentication } from '@/lib/auth/webauthn';
 import { getLinkedInToken } from '@/lib/state/tokens';
 import { LinkedInApiPublisher } from '@/lib/publisher';
 import { recordPublished } from '@/lib/state/history';
+import { fetchOgImage } from '@/lib/util/ogImage';
+import type { DraftArticle } from '@/lib/types';
 import { log } from '@/lib/util/logger';
 
 export const dynamic = 'force-dynamic';
@@ -93,10 +95,23 @@ export async function POST(req: Request) {
       accessToken: token.access_token,
       personUrn: token.person_urn,
     });
+    // Article kind: build the article payload and, if no thumbnail was uploaded
+    // by the owner, try the OG image of the source URL. Falling back to a
+    // thumbnail-less card if OG fetch fails is fine — LinkedIn renders the
+    // card as title + domain in that case.
+    let articleInput: Awaited<ReturnType<typeof buildArticleInput>> | undefined;
+    if (published.content_kind === 'article' && published.article) {
+      articleInput = await buildArticleInput(published.article);
+    }
+
     const result = await publisher.publish({
       body: published.body,
       ...(published.hashtags.length > 0 ? { hashtags: published.hashtags } : {}),
-      ...(published.media?.bytes && published.media.mime
+      ...(articleInput ? { article: articleInput } : {}),
+      // Single-image content only when not an article post.
+      ...(published.content_kind !== 'article' &&
+      published.media?.bytes &&
+      published.media.mime
         ? {
             image: {
               bytes: published.media.bytes,
@@ -105,9 +120,12 @@ export async function POST(req: Request) {
             },
           }
         : {}),
-      ...(published.link?.placement === 'body' ? { link: published.link.url } : {}),
+      // Inline link suppressed when posting as an article (source lives in the card).
+      ...(published.content_kind !== 'article' && published.link?.placement === 'body'
+        ? { link: published.link.url }
+        : {}),
     });
-    if (published.link?.placement === 'comment') {
+    if (published.content_kind !== 'article' && published.link?.placement === 'comment') {
       await publisher.addComment(result.urn, published.link.url);
     }
     await recordPublished({
@@ -123,4 +141,43 @@ export async function POST(req: Request) {
     log.error('linkedin publish failed after transition', { err: String(err), draft_id: draft.id });
     return NextResponse.json({ ok: false, error: String(err) }, { status: 502 });
   }
+}
+
+/**
+ * Build the publisher's article input from `draft.article`. If the owner didn't
+ * upload a thumbnail, try to fetch the source URL's OG image as a fallback.
+ * Returns the article shape ready to hand to the publisher; thumbnail key is
+ * omitted when no image is available (LinkedIn renders title + domain in that
+ * case, which is fine).
+ */
+async function buildArticleInput(
+  article: DraftArticle,
+): Promise<{
+  source: string;
+  title: string;
+  thumbnail?: { bytes: string; mime: string; alt?: string };
+}> {
+  const base = { source: article.source, title: article.title };
+  if (article.thumbnail?.bytes && article.thumbnail.mime) {
+    return {
+      ...base,
+      thumbnail: {
+        bytes: article.thumbnail.bytes,
+        mime: article.thumbnail.mime,
+        ...(article.thumbnail.alt !== undefined ? { alt: article.thumbnail.alt } : {}),
+      },
+    };
+  }
+  const og = await fetchOgImage(article.source);
+  if (og) {
+    log.info('article publish: og thumbnail fetched', { source: article.source });
+    return {
+      ...base,
+      thumbnail: { bytes: og.bytes, mime: og.mime, ...(og.alt ? { alt: og.alt } : {}) },
+    };
+  }
+  log.info('article publish: no thumbnail available, publishing card without one', {
+    source: article.source,
+  });
+  return base;
 }

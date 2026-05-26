@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { buildSystemPrompt, buildDraftMessages } from '@/lib/generator/prompt';
+import { buildEditMessages } from '@/lib/generator/editPrompt';
 import type { Config } from '@/lib/config/schema';
-import type { SourceItem } from '@/lib/types';
+import type { Draft, SourceItem } from '@/lib/types';
 
 const cfg: Config = {
   profile: {
@@ -92,5 +93,70 @@ describe('buildDraftMessages', () => {
       recentPillars: [],
     });
     expect((messages[1]?.content as string).length).toBeLessThan(2500);
+  });
+});
+
+describe('buildEditMessages', () => {
+  const baseDraft: Draft = {
+    id: 'd1',
+    version: 2,
+    status: 'PENDING_REVIEW',
+    body: 'Original body.',
+    content_kind: 'text',
+    hashtags: [],
+    mentions: [],
+    pillar: 'fullstack',
+    source_url: 'https://example.com/x',
+    conversation: [],
+    created_at: 0,
+    updated_at: 0,
+  };
+
+  it('surfaces content_kind and a preserve-kind instruction', () => {
+    const { messages } = buildEditMessages({
+      cfg,
+      sources: [item],
+      current: baseDraft,
+      message: 'tighten the opener',
+    });
+    const content = messages[2]?.content as string;
+    expect(content).toContain('content_kind: text');
+    expect(content).toContain('Preserve content_kind ("text")');
+  });
+
+  it('surfaces article.source/title/thumbnail when content_kind is article', () => {
+    const articleDraft: Draft = {
+      ...baseDraft,
+      content_kind: 'article',
+      article: {
+        source: 'https://example.com/the-piece',
+        title: 'A specific article',
+        thumbnail: { kind: 'owner', bytes: 'abc', mime: 'image/png' },
+      },
+    };
+    const { messages } = buildEditMessages({
+      cfg,
+      sources: [item],
+      current: articleDraft,
+      message: 'sharpen the angle',
+    });
+    const content = messages[2]?.content as string;
+    expect(content).toContain('content_kind: article');
+    expect(content).toContain('article.source: https://example.com/the-piece');
+    expect(content).toContain('article.title: A specific article');
+    expect(content).toContain('article.thumbnail: attached');
+  });
+
+  it('omits the article fields block when content_kind is not article', () => {
+    const { messages } = buildEditMessages({
+      cfg,
+      sources: [item],
+      current: baseDraft,
+      message: 'tighten',
+    });
+    const content = messages[2]?.content as string;
+    expect(content).not.toMatch(/^article\.source:/m);
+    expect(content).not.toMatch(/^article\.title:/m);
+    expect(content).not.toMatch(/^article\.thumbnail:/m);
   });
 });

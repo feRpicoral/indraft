@@ -1,6 +1,6 @@
 'use client';
 
-import type { Draft } from '@/lib/types';
+import type { Draft, DraftArticle } from '@/lib/types';
 
 const LINKEDIN_FOLD_CHARS = 210;
 
@@ -18,11 +18,15 @@ function splitAtFold(body: string): { above: string; below: string } {
 
 export default function PreviewPane({ draft }: { draft: Draft }) {
   const { above, below } = splitAtFold(draft.body);
+  const isArticle = draft.content_kind === 'article';
   return (
     <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <div className="mb-2 flex items-center gap-2 text-xs text-zinc-500">
         <span className="rounded-full bg-zinc-100 px-2 py-0.5 dark:bg-zinc-800">
           {draft.pillar}
+        </span>
+        <span className="rounded-full bg-zinc-100 px-2 py-0.5 font-mono text-[10px] uppercase dark:bg-zinc-800">
+          {draft.content_kind}
         </span>
         {draft.linter_warnings && draft.linter_warnings.length > 0 && (
           <span
@@ -49,7 +53,8 @@ export default function PreviewPane({ draft }: { draft: Draft }) {
           </>
         )}
       </article>
-      {draft.media?.url && (
+      {isArticle && draft.article && <ArticleCard article={draft.article} />}
+      {!isArticle && draft.media?.url && (
         <div className="mt-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -59,7 +64,7 @@ export default function PreviewPane({ draft }: { draft: Draft }) {
           />
         </div>
       )}
-      {draft.media?.bytes && draft.media?.mime && (
+      {!isArticle && draft.media?.bytes && draft.media?.mime && (
         <div className="mt-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -74,7 +79,7 @@ export default function PreviewPane({ draft }: { draft: Draft }) {
           {draft.hashtags.map((h) => `#${h.replace(/^#/, '')}`).join(' ')}
         </p>
       )}
-      {draft.link && (
+      {!isArticle && draft.link && (
         <p className="mt-3 text-xs text-zinc-500">
           link: <code>{draft.link.url}</code>{' '}
           <span className="rounded bg-zinc-100 px-1 py-0.5 dark:bg-zinc-800">
@@ -93,6 +98,44 @@ export default function PreviewPane({ draft }: { draft: Draft }) {
           {draft.source_url}
         </a>
       </p>
+    </div>
+  );
+}
+
+/**
+ * LinkedIn-style article card preview: thumbnail (if any) on top, bold title,
+ * source domain underneath. Mirrors what LinkedIn renders for posts published
+ * with `content.article`.
+ */
+function ArticleCard({ article }: { article: DraftArticle }) {
+  const thumbSrc =
+    article.thumbnail?.url ??
+    (article.thumbnail?.bytes && article.thumbnail.mime
+      ? `data:${article.thumbnail.mime};base64,${article.thumbnail.bytes}`
+      : null);
+  const host = (() => {
+    try {
+      return new URL(article.source).hostname.replace(/^www\./, '');
+    } catch {
+      return article.source;
+    }
+  })();
+  return (
+    <div className="mt-3 overflow-hidden rounded-md border border-zinc-200 dark:border-zinc-700">
+      {thumbSrc && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={thumbSrc}
+          alt={article.thumbnail?.alt ?? ''}
+          className="block max-h-64 w-full object-cover"
+        />
+      )}
+      <div className="p-3">
+        <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-50">
+          {article.title || <span className="text-zinc-400">(no title)</span>}
+        </p>
+        <p className="mt-0.5 text-xs text-zinc-500">{host}</p>
+      </div>
     </div>
   );
 }
