@@ -46,12 +46,18 @@ export async function buildRegistrationOptions(
     userID: new TextEncoder().encode(USER_ID),
     userName: USER_NAME,
     attestationType: 'none',
+    // Cover ~100% of platform authenticators + password managers (incl. LastPass).
+    // Drop the SimpleWebAuthn default of EdDSA (-8) which has narrow support.
+    supportedAlgorithmIDs: [-7, -257],
     excludeCredentials: existing.map((c) => ({
       id: c.id,
       transports: (c.transports ?? []) as AuthenticatorTransportFuture[],
     })),
     authenticatorSelection: {
-      residentKey: 'preferred',
+      // We always have a session by the time the user publishes (magic link →
+      // session cookie), so a discoverable credential gives no UX benefit and
+      // is rejected outright by several password managers. Skip it.
+      residentKey: 'discouraged',
       userVerification: 'preferred',
     },
   });
