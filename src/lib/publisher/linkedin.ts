@@ -8,6 +8,7 @@ import {
   type PublishResult,
 } from './index';
 import { uploadImage } from './linkedinUpload';
+import { escapeLittleTextFormat, hashtagTemplate } from '../util/littleText';
 
 const LI_BASE = 'https://api.linkedin.com/rest';
 
@@ -131,18 +132,19 @@ export class LinkedInApiPublisher implements Publisher {
     post: PublishInput,
     imageUrn: string | undefined,
   ): Record<string, unknown> {
-    // Compose: body + optional hashtag block + optional inline link.
-    // Hashtags live in their own trailing block; the body itself never carries them.
-    // Comment-placement is handled by a separate addComment call by the route.
-    let commentary = post.body;
+    // Compose: body + optional hashtag block + optional inline link. Everything
+    // goes through Little Text Format escaping because LinkedIn silently truncates
+    // commentary at the first unescaped reserved character (notably `(` and `)` —
+    // those trip the MentionElement parser). Hashtags use the explicit template
+    // form to be rendered as hashtags AFTER the body escape.
+    // Spec: https://learn.microsoft.com/.../shares/little-text-format
+    let commentary = escapeLittleTextFormat(post.body);
     if (post.hashtags && post.hashtags.length > 0) {
-      const tagLine = post.hashtags
-        .map((t) => `#${t.replace(/^#+/, '')}`)
-        .join(' ');
+      const tagLine = post.hashtags.map(hashtagTemplate).join(' ');
       commentary = `${commentary}\n\n${tagLine}`;
     }
     if (post.link) {
-      commentary = `${commentary}\n\n${post.link}`;
+      commentary = `${commentary}\n\n${escapeLittleTextFormat(post.link)}`;
     }
 
     const base: Record<string, unknown> = {
