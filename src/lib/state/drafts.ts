@@ -1,18 +1,7 @@
-import type { ContentKind, Draft, DraftStatus } from '../types';
+import type { Draft, DraftStatus } from '../types';
 import { newId } from '../util/id';
 import { getKv } from './kv';
 import { k } from './keys';
-
-/**
- * Backfill defaults for fields added after the draft was created. Lets older
- * drafts in KV read correctly without a batch migration. On the next write
- * (any transition) the upgraded shape is persisted.
- */
-function backfill(draft: Draft): Draft {
-  if (draft.content_kind) return draft;
-  const inferred: ContentKind = draft.media ? 'single_image' : 'text';
-  return { ...draft, content_kind: inferred };
-}
 
 /**
  * Allowed state-machine transitions. Anything not listed is rejected by
@@ -59,8 +48,7 @@ export async function createDraft(input: CreateDraftInput): Promise<Draft> {
 
 export async function getDraft(id: string): Promise<Draft | null> {
   const kv = getKv();
-  const draft = await kv.get<Draft>(k.draft(id));
-  return draft ? backfill(draft) : null;
+  return (await kv.get<Draft>(k.draft(id))) ?? null;
 }
 
 export async function listPending(): Promise<Draft[]> {
@@ -69,7 +57,7 @@ export async function listPending(): Promise<Draft[]> {
   const out: Draft[] = [];
   for (const id of ids) {
     const d = await kv.get<Draft>(k.draft(id));
-    if (d) out.push(backfill(d));
+    if (d) out.push(d);
   }
   return out;
 }
