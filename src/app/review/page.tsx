@@ -36,6 +36,7 @@ export default async function ReviewPage({
   return (
     <ReviewClient
       initialDraft={draft}
+      pillars={cfg.content.pillars}
       stale={isStale(draft, cfg.review.stale_after_hours)}
       _justSetCookie={false}
     />

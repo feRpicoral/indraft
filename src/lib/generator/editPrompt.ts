@@ -83,6 +83,7 @@ function renderEditRequest(ctx: EditContext): string {
     '',
     'INSTRUCTIONS',
     '------------',
+    '- The CURRENT DRAFT body above is authoritative. The owner may have edited it directly outside of this chat. Preserve their exact wording unless the new message explicitly asks for a change.',
     '- If the user supplied quoted verbatim text (in "..." or backticks), use it verbatim in the body and set verbatim_ranges so the linter skips it.',
     '- Do NOT regenerate fields the user did not ask about, unless the change forces it (e.g., a topic pivot also changes source_url and pillar).',
     '- Keep the same hard rules: voice, length, no AI tells, 3–5 hashtags, ≤1 emoji.',

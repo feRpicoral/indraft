@@ -6,20 +6,23 @@ import type { Draft } from '@/lib/types';
 import PreviewPane from './PreviewPane';
 import ChatPane from './ChatPane';
 import PublishButton from './PublishButton';
+import RawEditPanel from './RawEditPanel';
 
 interface Props {
   initialDraft: Draft;
+  pillars: string[];
   stale: boolean;
   // The page may have just set a Set-Cookie; we don't need to act on it,
   // it's only here to keep the server component's behavior testable.
   _justSetCookie: boolean;
 }
 
-export default function ReviewClient({ initialDraft, stale }: Props) {
+export default function ReviewClient({ initialDraft, pillars, stale }: Props) {
   const router = useRouter();
   const [draft, setDraft] = useState<Draft>(initialDraft);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
+  const [rawEdit, setRawEdit] = useState(false);
 
   async function submitEdit(message: string, imageFile?: File, pastedUrl?: string) {
     setBusy(true);
@@ -80,7 +83,21 @@ export default function ReviewClient({ initialDraft, stale }: Props) {
       <div className="mx-auto max-w-5xl">
         <header className="mb-4 flex items-center justify-between">
           <h1 className="text-xl font-semibold">Review draft</h1>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setRawEdit((v) => !v)}
+              className={
+                'text-sm font-medium ' +
+                (rawEdit
+                  ? 'text-zinc-900 dark:text-zinc-100'
+                  : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200')
+              }
+              disabled={busy}
+              title="Edit body, hashtags, link, and pillar directly without the LLM"
+            >
+              {rawEdit ? 'Done editing' : 'Raw edit'}
+            </button>
             <button
               type="button"
               onClick={onDiscard}
@@ -99,7 +116,19 @@ export default function ReviewClient({ initialDraft, stale }: Props) {
           </div>
         )}
         <div className="grid gap-4 md:grid-cols-2">
-          <PreviewPane draft={draft} />
+          {rawEdit ? (
+            <RawEditPanel
+              draft={draft}
+              pillars={pillars}
+              onSaved={(d) => {
+                setDraft(d);
+                setRawEdit(false);
+              }}
+              onCancel={() => setRawEdit(false)}
+            />
+          ) : (
+            <PreviewPane draft={draft} />
+          )}
           <ChatPane draft={draft} onSubmit={submitEdit} busy={busy} />
         </div>
       </div>
