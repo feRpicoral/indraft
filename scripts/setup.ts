@@ -121,30 +121,78 @@ async function ensureSecrets(): Promise<StepResult> {
   if (missing.length === 0) {
     return { name, status: 'skipped', note: 'all required secrets already set' };
   }
-  console.log(`\nMissing ${missing.length} secrets. We'll add them one at a time.`);
+
+  // Read local .env / .env.local first so the user doesn't retype anything
+  // already filled in. KV_* are auto-injected by Vercel — skip those.
+  const localValues = readLocalEnv();
+  const fromLocal: string[] = [];
+  const fromPrompt: string[] = [];
   for (const s of missing) {
+    const localVal = localValues[s.key];
     let value: string;
-    if (s.generate) {
+    if (localVal && localVal.length > 0) {
+      value = localVal;
+      fromLocal.push(s.key);
+    } else if (s.generate) {
       const accept = await confirm({
         message: `${s.key} (${s.description}) — auto-generate?`,
         default: true,
       });
       value = accept ? s.generate() : await ask(s);
+      fromPrompt.push(s.key);
     } else {
       value = await ask(s);
+      fromPrompt.push(s.key);
     }
-    const r = spawnSync('vercel', ['env', 'add', s.key, 'production', 'preview', 'development'], {
-      input: value,
-      stdio: ['pipe', 'inherit', 'inherit'],
-    });
+    const r = spawnSync(
+      'vercel',
+      ['env', 'add', s.key, 'production', 'preview', 'development'],
+      {
+        input: value,
+        stdio: ['pipe', 'inherit', 'inherit'],
+      },
+    );
     if (r.status !== 0) return { name, status: 'failed', note: `failed on ${s.key}` };
   }
-  return { name, status: 'ok' };
+  const summary = fromLocal.length
+    ? `pulled ${fromLocal.length} from .env.local, prompted for ${fromPrompt.length}`
+    : `prompted for ${fromPrompt.length}`;
+  return { name, status: 'ok', note: summary };
 }
 
 async function ask(s: SecretDef): Promise<string> {
   if (s.secret) return password({ message: `${s.key}: ${s.description}` });
   return input({ message: `${s.key}: ${s.description}` });
+}
+
+/**
+ * Read `.env.local` (preferred) or `.env` into a key→value map. Used by
+ * `ensureSecrets` to avoid prompting for values you've already entered.
+ * Strips surrounding quotes; ignores comments and blank lines.
+ */
+function readLocalEnv(): Record<string, string> {
+  for (const file of ['.env.local', '.env']) {
+    const p = join(process.cwd(), file);
+    if (!existsSync(p)) continue;
+    const map: Record<string, string> = {};
+    for (const raw of readFileSync(p, 'utf8').split('\n')) {
+      const line = raw.trim();
+      if (!line || line.startsWith('#')) continue;
+      const eq = line.indexOf('=');
+      if (eq <= 0) continue;
+      const key = line.slice(0, eq).trim();
+      let val = line.slice(eq + 1).trim();
+      if (
+        (val.startsWith('"') && val.endsWith('"')) ||
+        (val.startsWith("'") && val.endsWith("'"))
+      ) {
+        val = val.slice(1, -1);
+      }
+      map[key] = val;
+    }
+    return map;
+  }
+  return {};
 }
 
 async function checkResendDomain(): Promise<StepResult> {
