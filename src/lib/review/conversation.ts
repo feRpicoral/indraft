@@ -1,4 +1,4 @@
-import type { Draft, DraftOutput, EditTurn } from '../types';
+import type { Draft, DraftArticle, DraftOutput, EditTurn } from '../types';
 
 /**
  * Pure reducer for one edit turn. Given the current draft, the user's
@@ -17,6 +17,7 @@ export interface EditApplyArgs {
 }
 
 export function buildEditPatch(args: EditApplyArgs): Partial<Draft> {
+  const { current, output } = args;
   const userTurn: EditTurn = {
     role: 'user',
     content: args.userMessage,
@@ -26,25 +27,51 @@ export function buildEditPatch(args: EditApplyArgs): Partial<Draft> {
   };
   const assistantTurn: EditTurn = {
     role: 'assistant',
-    content: args.output.body,
+    content: output.body,
     ts: Date.now(),
   };
   const patch: Partial<Draft> = {
-    body: args.output.body,
-    hashtags: args.output.hashtags,
-    mentions: args.output.mentions,
-    pillar: args.output.pillar,
-    source_url: args.output.source_url,
-    conversation: [...args.current.conversation, userTurn, assistantTurn],
+    body: output.body,
+    content_kind: output.content_kind,
+    hashtags: output.hashtags,
+    mentions: output.mentions,
+    pillar: output.pillar,
+    source_url: output.source_url,
+    conversation: [...current.conversation, userTurn, assistantTurn],
   };
-  if (args.output.verbatim_ranges !== undefined) {
-    patch.verbatim_ranges = args.output.verbatim_ranges;
+  if (output.verbatim_ranges !== undefined) {
+    patch.verbatim_ranges = output.verbatim_ranges;
   }
-  if (args.output.link) {
-    patch.link = { url: args.output.link, placement: args.output.link_placement };
+  if (output.link) {
+    patch.link = { url: output.link, placement: output.link_placement };
   } else {
     // User asked to drop the link
     patch.link = undefined;
+  }
+  // Article fields: carry the LLM-supplied source/title and preserve any
+  // thumbnail the user already uploaded (the model never produces thumbnail
+  // bytes — those come from /api/review/upload-image with slot=thumbnail).
+  if (output.content_kind === 'article') {
+    if (output.article) {
+      const next: DraftArticle = {
+        source: output.article.source,
+        title: output.article.title,
+        ...(current.article?.thumbnail ? { thumbnail: current.article.thumbnail } : {}),
+      };
+      patch.article = next;
+    } else if (current.article) {
+      patch.article = current.article;
+    }
+  } else if (current.content_kind === 'article') {
+    // Switching away from article — drop the now-irrelevant card record so it
+    // doesn't ride along into the publish call.
+    patch.article = undefined;
+  }
+  // Media is attached via /api/review/upload-image; this reducer never sets
+  // bytes. But when the kind switches away from single_image we DO clear the
+  // attached image so it doesn't ship inside a non-image post.
+  if (current.content_kind === 'single_image' && output.content_kind !== 'single_image') {
+    patch.media = undefined;
   }
   return patch;
 }
