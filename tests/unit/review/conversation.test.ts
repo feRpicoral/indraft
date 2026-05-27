@@ -36,6 +36,7 @@ describe('buildEditPatch', () => {
       userMessage: 'tighten this',
       output: baseOutput,
     });
+
     expect(patch.conversation).toHaveLength(2);
     expect(patch.conversation?.[0]?.role).toBe('user');
     expect(patch.conversation?.[0]?.content).toBe('tighten this');
@@ -49,6 +50,7 @@ describe('buildEditPatch', () => {
       userMessage: 'tighten this',
       output: { ...baseOutput, body: 'Tighter version' },
     });
+
     expect(patch.body).toBe('Tighter version');
     expect(patch.pillar).toBe('fullstack');
     expect(patch.source_url).toBe('https://example.com/x');
@@ -66,6 +68,7 @@ describe('buildEditPatch', () => {
         source_url: 'https://other.com/y',
       },
     });
+
     expect(patch.pillar).toBe('news_opinion');
     expect(patch.source_url).toBe('https://other.com/y');
     expect(patch.conversation?.[0]?.pastedUrl).toBe('https://other.com/y');
@@ -77,6 +80,7 @@ describe('buildEditPatch', () => {
       userMessage: 'use this: "my own words go here"',
       output: { ...baseOutput, verbatim_ranges: [[5, 25]] },
     });
+
     expect(patch.verbatim_ranges).toEqual([[5, 25]]);
   });
 
@@ -85,11 +89,13 @@ describe('buildEditPatch', () => {
       ...baseDraft,
       link: { url: 'https://example.com/x', placement: 'body' },
     };
+
     const patch = buildEditPatch({
       current: draftWithLink,
       userMessage: 'drop the link',
       output: { ...baseOutput, link: undefined },
     });
+
     expect(patch.link).toBeUndefined();
   });
 
@@ -102,6 +108,7 @@ describe('buildEditPatch', () => {
       imageUrl: 'https://example.com/image.png',
       output: baseOutput,
     });
+
     expect(patch.conversation?.[0]?.imageUrl).toBe('https://example.com/image.png');
     expect(patch).not.toHaveProperty('media');
   });
@@ -112,6 +119,7 @@ describe('buildEditPatch', () => {
       userMessage: 'no change to kind',
       output: baseOutput,
     });
+
     expect(patch.content_kind).toBe('text');
   });
 
@@ -125,6 +133,7 @@ describe('buildEditPatch', () => {
         article: { source: 'https://example.com/article', title: 'A headline' },
       },
     });
+
     expect(patch.content_kind).toBe('article');
     expect(patch.article).toEqual({
       source: 'https://example.com/article',
@@ -142,6 +151,7 @@ describe('buildEditPatch', () => {
         thumbnail: { kind: 'owner', bytes: 'AAA', mime: 'image/png', alt: 'cover' },
       },
     };
+
     const patch = buildEditPatch({
       current: withThumb,
       userMessage: 'rewrite the headline',
@@ -151,6 +161,7 @@ describe('buildEditPatch', () => {
         article: { source: 'https://example.com/new', title: 'New headline' },
       },
     });
+
     expect(patch.article?.source).toBe('https://example.com/new');
     expect(patch.article?.title).toBe('New headline');
     expect(patch.article?.thumbnail).toEqual({
@@ -167,11 +178,13 @@ describe('buildEditPatch', () => {
       content_kind: 'article',
       article: { source: 'https://x/y', title: 'T' },
     };
+
     const patch = buildEditPatch({
       current: articleDraft,
       userMessage: 'drop the article framing — just commentary',
       output: { ...baseOutput, content_kind: 'text' },
     });
+
     expect(patch.content_kind).toBe('text');
     expect(patch.article).toBeUndefined();
     // Property must be present so the spread in transition() actually drops it.
@@ -184,11 +197,13 @@ describe('buildEditPatch', () => {
       content_kind: 'single_image',
       media: { kind: 'owner', bytes: 'AAA', mime: 'image/png' },
     };
+
     const patch = buildEditPatch({
       current: imageDraft,
       userMessage: 'drop the image',
       output: { ...baseOutput, content_kind: 'text' },
     });
+
     expect(patch.content_kind).toBe('text');
     expect(patch.media).toBeUndefined();
     expect(Object.prototype.hasOwnProperty.call(patch, 'media')).toBe(true);
@@ -200,11 +215,13 @@ describe('buildEditPatch', () => {
       content_kind: 'single_image',
       media: { kind: 'owner', bytes: 'AAA', mime: 'image/png' },
     };
+
     const patch = buildEditPatch({
       current: imageDraft,
       userMessage: 'tighten copy but keep the image',
       output: { ...baseOutput, content_kind: 'single_image' },
     });
+
     expect(patch.content_kind).toBe('single_image');
     expect(patch).not.toHaveProperty('media');
   });
@@ -217,11 +234,13 @@ describe('buildEditPatch', () => {
         { role: 'assistant', content: 'first response', ts: 0 },
       ],
     };
+
     const patch = buildEditPatch({
       current: prior,
       userMessage: 'second edit',
       output: baseOutput,
     });
+
     expect(patch.conversation).toHaveLength(4);
     expect(patch.conversation?.[0]?.content).toBe('first edit');
     expect(patch.conversation?.[2]?.content).toBe('second edit');

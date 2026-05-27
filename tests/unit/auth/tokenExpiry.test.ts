@@ -21,37 +21,62 @@ function makeToken(issuedDaysAgo: number, lifetimeDays = 60) {
 
 describe('daysToExpiry', () => {
   it('returns 60 immediately after issue', () => {
-    expect(daysToExpiry(makeToken(0), NOW)).toBe(60);
+    const token = makeToken(0);
+
+    expect(daysToExpiry(token, NOW)).toBe(60);
   });
+
   it('returns 53 after a week', () => {
-    expect(daysToExpiry(makeToken(7), NOW)).toBe(53);
+    const token = makeToken(7);
+
+    expect(daysToExpiry(token, NOW)).toBe(53);
   });
+
   it('returns 0 at the boundary', () => {
-    expect(daysToExpiry(makeToken(60), NOW)).toBe(0);
+    const token = makeToken(60);
+
+    expect(daysToExpiry(token, NOW)).toBe(0);
   });
+
   it('returns a negative number after expiry', () => {
-    expect(daysToExpiry(makeToken(61), NOW)).toBeLessThan(0);
+    const token = makeToken(61);
+
+    expect(daysToExpiry(token, NOW)).toBeLessThan(0);
   });
 });
 
 describe('isExpired', () => {
   it('false when in the future', () => {
-    expect(isExpired(makeToken(0), NOW)).toBe(false);
+    const token = makeToken(0);
+
+    expect(isExpired(token, NOW)).toBe(false);
   });
+
   it('true at and past the boundary', () => {
-    expect(isExpired(makeToken(60), NOW)).toBe(true);
-    expect(isExpired(makeToken(61), NOW)).toBe(true);
+    const atBoundary = makeToken(60);
+    const past = makeToken(61);
+
+    expect(isExpired(atBoundary, NOW)).toBe(true);
+    expect(isExpired(past, NOW)).toBe(true);
   });
 });
 
 describe('shouldWarnReauth', () => {
   it('false when many days remain', () => {
-    expect(shouldWarnReauth(makeToken(0), NOW)).toBe(false);
+    const token = makeToken(0);
+
+    expect(shouldWarnReauth(token, NOW)).toBe(false);
   });
+
   it(`true within the ${REAUTH_WARNING_DAYS}-day warning window`, () => {
-    expect(shouldWarnReauth(makeToken(54), NOW)).toBe(true);
+    const token = makeToken(54);
+
+    expect(shouldWarnReauth(token, NOW)).toBe(true);
   });
+
   it('false when already expired (a separate template handles that)', () => {
-    expect(shouldWarnReauth(makeToken(60), NOW)).toBe(false);
+    const token = makeToken(60);
+
+    expect(shouldWarnReauth(token, NOW)).toBe(false);
   });
 });

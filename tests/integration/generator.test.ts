@@ -76,6 +76,7 @@ const badResponseUnparseable = 'this is not json';
 describe('generator.draft', () => {
   it('returns clean output on first try when the response passes the linter', async () => {
     const llm = new StubLLM([goodResponse]);
+
     const res = await draft(
       { cfg, llm },
       {
@@ -85,6 +86,7 @@ describe('generator.draft', () => {
         recentPillars: [],
       },
     );
+
     expect(llm.calls).toBe(1);
     expect(res.linter_warnings).toEqual([]);
     expect(res.output.pillar).toBe('fullstack');
@@ -92,6 +94,7 @@ describe('generator.draft', () => {
 
   it('retries on linter failure and returns clean output if a retry succeeds', async () => {
     const llm = new StubLLM([badResponseLinter, goodResponse]);
+
     const res = await draft(
       { cfg, llm },
       {
@@ -101,12 +104,14 @@ describe('generator.draft', () => {
         recentPillars: [],
       },
     );
+
     expect(llm.calls).toBe(2);
     expect(res.linter_warnings).toEqual([]);
   });
 
   it('surfaces warnings (does not throw) after exhausting retries', async () => {
     const llm = new StubLLM([badResponseLinter, badResponseLinter, badResponseLinter]);
+
     const res = await draft(
       { cfg, llm },
       {
@@ -116,6 +121,7 @@ describe('generator.draft', () => {
         recentPillars: [],
       },
     );
+
     expect(llm.calls).toBe(3); // max_retries=2 means 3 attempts
     expect(res.linter_warnings.length).toBeGreaterThan(0);
     expect(res.linter_warnings.some((w) => w.startsWith('genericOpeners'))).toBe(true);
@@ -123,6 +129,7 @@ describe('generator.draft', () => {
 
   it('retries on unparseable JSON and succeeds when a retry returns valid JSON', async () => {
     const llm = new StubLLM([badResponseUnparseable, goodResponse]);
+
     const res = await draft(
       { cfg, llm },
       {
@@ -132,12 +139,14 @@ describe('generator.draft', () => {
         recentPillars: [],
       },
     );
+
     expect(llm.calls).toBe(2);
     expect(res.output.body).toContain('TypeScript 6');
   });
 
   it('throws when retries run out of parseable output entirely', async () => {
     const llm = new StubLLM([badResponseUnparseable, badResponseUnparseable, badResponseUnparseable]);
+
     await expect(
       draft(
         { cfg, llm },
@@ -170,6 +179,7 @@ describe('generator.edit', () => {
 
   it('feeds the current draft + user message into the LLM and returns a new output', async () => {
     const llm = new StubLLM([goodResponse]);
+
     const res = await edit(
       { cfg, llm },
       {
@@ -178,6 +188,7 @@ describe('generator.edit', () => {
         sources: [sourceItem],
       },
     );
+
     expect(res.output.body).toBeTruthy();
   });
 
@@ -195,6 +206,7 @@ describe('generator.edit', () => {
       verbatim_ranges: [[2, 50]],
     });
     const llm = new StubLLM([verbatimResp]);
+
     const res = await edit(
       { cfg, llm },
       {
@@ -203,6 +215,7 @@ describe('generator.edit', () => {
         sources: [sourceItem],
       },
     );
+
     expect(res.output.verbatim_ranges).toEqual([[2, 50]]);
   });
 });

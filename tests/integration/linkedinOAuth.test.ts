@@ -17,6 +17,7 @@ afterAll(() => server.close());
 describe('buildAuthUrl', () => {
   it('includes all required parameters and the openid+w_member_social scopes', () => {
     const url = new URL(buildAuthUrl(CFG, 'state-123'));
+
     expect(url.origin + url.pathname).toBe('https://www.linkedin.com/oauth/v2/authorization');
     expect(url.searchParams.get('client_id')).toBe('client-id');
     expect(url.searchParams.get('state')).toBe('state-123');
@@ -46,7 +47,9 @@ describe('exchangeCode', () => {
         return HttpResponse.json({ sub: 'person-12345' });
       }),
     );
+
     const r = await exchangeCode(CFG, 'test-code');
+
     expect(r.access_token).toBe('access-token-x');
     expect(r.expires_in).toBe(60 * 86400);
     expect(r.sub).toBe('person-12345');
@@ -59,6 +62,7 @@ describe('exchangeCode', () => {
         HttpResponse.json({ error: 'invalid_grant' }, { status: 400 }),
       ),
     );
+
     await expect(exchangeCode(CFG, 'bad-code')).rejects.toThrow(/LinkedIn token exchange 400/);
   });
 
@@ -69,6 +73,7 @@ describe('exchangeCode', () => {
       ),
       http.get('https://api.linkedin.com/v2/userinfo', () => HttpResponse.json({})),
     );
+
     await expect(exchangeCode(CFG, 'code')).rejects.toThrow(/missing sub/);
   });
 });

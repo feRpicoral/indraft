@@ -31,7 +31,9 @@ llm:
   utility_model: anthropic/claude-haiku-4-5-20251001
 `,
     );
+
     const cfg = loadConfig(path);
+
     expect(cfg.schedule.hour).toBe(9); // default
     expect(cfg.post.link_placement).toBe('none'); // research-driven default
     expect(cfg.content.linter.max_em_dashes).toBe(2);
@@ -56,17 +58,22 @@ llm:
   utility_model: m
 `,
     );
-    expect(() => loadConfig(path)).toThrow(ConfigError);
+
+    let captured: Error | undefined;
     try {
       loadConfig(path);
     } catch (e) {
-      const msg = (e as Error).message;
-      expect(msg).toContain('profile.about');
+      captured = e as Error;
     }
+
+    expect(captured).toBeInstanceOf(ConfigError);
+    expect(captured?.message).toContain('profile.about');
   });
 
   it('throws ConfigError when the file is missing', () => {
-    expect(() => loadConfig(join(tmp, 'nope.yml'))).toThrow(/Config file not found/);
+    const missing = join(tmp, 'nope.yml');
+
+    expect(() => loadConfig(missing)).toThrow(/Config file not found/);
   });
 
   it('reads config from INDRAFT_CONFIG_YAML when set (production path)', () => {
@@ -84,8 +91,10 @@ llm:
   draft_model: opus
   utility_model: haiku
 `;
+
     try {
       const cfg = loadConfig();
+
       expect(cfg.llm.draft_model).toBe('opus');
     } finally {
       if (prev !== undefined) process.env.INDRAFT_CONFIG_YAML = prev;
@@ -111,6 +120,7 @@ llm:
   utility_model: m
 `,
     );
+
     expect(() => loadConfig(path)).toThrow(/content\.pillars/);
   });
 });
@@ -124,30 +134,31 @@ describe('loadEnv', () => {
       NOTIFY_TO_ADDRESS: 'a@b.com',
       NOTIFY_FROM_ADDRESS: 'c@d.com',
     });
+
     expect(env.WEBAUTHN_RP_ID).toBe('localhost');
   });
 
   it('rejects a short signing secret', () => {
-    expect(() =>
-      loadEnv({
-        MAGIC_LINK_SIGNING_SECRET: 'short',
-        WEBAUTHN_RP_ID: 'localhost',
-        CRON_SECRET: 'cron',
-        NOTIFY_TO_ADDRESS: 'a@b.com',
-        NOTIFY_FROM_ADDRESS: 'c@d.com',
-      }),
-    ).toThrow(/MAGIC_LINK_SIGNING_SECRET/);
+    const input = {
+      MAGIC_LINK_SIGNING_SECRET: 'short',
+      WEBAUTHN_RP_ID: 'localhost',
+      CRON_SECRET: 'cron',
+      NOTIFY_TO_ADDRESS: 'a@b.com',
+      NOTIFY_FROM_ADDRESS: 'c@d.com',
+    };
+
+    expect(() => loadEnv(input)).toThrow(/MAGIC_LINK_SIGNING_SECRET/);
   });
 
   it('rejects an invalid email address', () => {
-    expect(() =>
-      loadEnv({
-        MAGIC_LINK_SIGNING_SECRET: 'x'.repeat(40),
-        WEBAUTHN_RP_ID: 'localhost',
-        CRON_SECRET: 'cron',
-        NOTIFY_TO_ADDRESS: 'not-an-email',
-        NOTIFY_FROM_ADDRESS: 'c@d.com',
-      }),
-    ).toThrow(/NOTIFY_TO_ADDRESS/);
+    const input = {
+      MAGIC_LINK_SIGNING_SECRET: 'x'.repeat(40),
+      WEBAUTHN_RP_ID: 'localhost',
+      CRON_SECRET: 'cron',
+      NOTIFY_TO_ADDRESS: 'not-an-email',
+      NOTIFY_FROM_ADDRESS: 'c@d.com',
+    };
+
+    expect(() => loadEnv(input)).toThrow(/NOTIFY_TO_ADDRESS/);
   });
 });
