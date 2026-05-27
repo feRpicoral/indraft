@@ -1,29 +1,57 @@
 import { NextResponse } from 'next/server';
-import { listPending } from '@/lib/state/drafts';
+import { listReviewable } from '@/lib/state/drafts';
 import { issueMagicNonce } from '@/lib/state/tokens';
 import { signMagicLink } from '@/lib/review/magicLink';
 import { newNonce } from '@/lib/util/id';
 import { loadConfig, loadEnv } from '@/lib/config/loader';
 import { buildNotifier } from '@/lib/notify';
+import { getKv } from '@/lib/state/kv';
+import { k } from '@/lib/state/keys';
 import { log } from '@/lib/util/logger';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 /**
- * Public, safe endpoint: emails fresh magic links for all currently-pending
- * drafts to the configured NOTIFY_TO_ADDRESS. There is no way to redirect
- * the email elsewhere — the address is environment-pinned. So even if this
- * endpoint is hammered, it only spams the owner, never anyone else.
+ * Public endpoint: emails fresh magic links for everything the owner still
+ * needs to act on — PENDING_REVIEW (normal queue) plus PUBLISH_FAILED (a
+ * previous attempt rejected by LinkedIn, awaiting retry). The email
+ * recipient is environment-pinned, so abuse can only spam the owner, but
+ * abuse can still burn email quota and churn out valid magic links — a
+ * global single-slot lock with TTL caps it at one batch per
+ * RATE_LIMIT_WINDOW_SEC.
+ *
+ * The lock is global (not per-IP) on purpose: the email recipient is the
+ * same regardless of caller, so a global cap bounds the damage even if the
+ * attacker rotates IPs. `SET NX EX` is atomic on Redis; the in-memory
+ * adapter honors NX too.
+ *
+ * Surfacing PUBLISH_FAILED matters because a draft leaves the pending sorted
+ * set the moment it transitions out of PENDING_REVIEW — without that the
+ * owner would lose the ability to retry once their original review session
+ * cookie expired.
  */
+const RATE_LIMIT_WINDOW_SEC = 60;
+
 export async function POST() {
   try {
+    const lock = await getKv().set(k.accessRequestLock(), Date.now(), {
+      nx: true,
+      ex: RATE_LIMIT_WINDOW_SEC,
+    });
+    if (lock === null) {
+      log.warn('/access/request throttled');
+      return NextResponse.json(
+        { ok: false, error: 'rate limited; try again in a minute' },
+        { status: 429, headers: { 'Retry-After': String(RATE_LIMIT_WINDOW_SEC) } },
+      );
+    }
     const env = loadEnv();
     const cfg = loadConfig();
-    const pending = await listPending();
+    const reviewable = await listReviewable();
     const ttlSec = cfg.review.link_ttl_hours * 3600;
     const rows = await Promise.all(
-      pending.map(async (d) => {
+      reviewable.map(async (d) => {
         const nonce = newNonce();
         await issueMagicNonce({ nonce, draft_id: d.id, ttlSeconds: ttlSec });
         const token = signMagicLink({

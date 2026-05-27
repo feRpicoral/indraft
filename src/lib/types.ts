@@ -82,7 +82,9 @@ export interface EditTurn {
 export type DraftStatus =
   | 'DRAFTED'
   | 'PENDING_REVIEW'
+  | 'PUBLISHING'
   | 'PUBLISHED'
+  | 'PUBLISH_FAILED'
   | 'DISCARDED'
   | 'EDITED'
   | 'STALE';
@@ -111,10 +113,14 @@ export interface Draft {
   verbatim_ranges?: Array<[number, number]>;
   created_at: number;
   updated_at: number;
-  /** Opaque proof token written when transitioning to PUBLISHED. */
+  /** Opaque proof token written when transitioning to PUBLISHING. */
   publishProof?: string;
   /** LinkedIn URN returned by the publisher after a successful post. */
   publishedUrn?: string;
+  /** Error message captured when transitioning to PUBLISH_FAILED. */
+  publishError?: string;
+  /** Epoch ms of the most recent publish attempt (PUBLISHING entry). */
+  publish_attempted_at?: number;
 }
 
 /** Output shape the generator must produce (parsed from LLM JSON). */

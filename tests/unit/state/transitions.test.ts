@@ -5,6 +5,7 @@ import {
   transition,
   TransitionError,
   MissingPublishProofError,
+  MissingPublishedUrnError,
   listPending,
 } from '@/lib/state/drafts';
 import { __resetKvForTest } from '@/lib/state/kv';
@@ -50,36 +51,90 @@ describe('transition', () => {
     expect(pending.map((p) => p.id)).toContain(d.id);
   });
 
-  it('allows PENDING_REVIEW → PUBLISHED with a proof', async () => {
+  it('allows PENDING_REVIEW → PUBLISHING → PUBLISHED with proof + urn', async () => {
     const d = await createDraft(freshInput());
     await transition(d.id, 'PENDING_REVIEW');
-    const next = await transition(d.id, 'PUBLISHED', { publishProof: 'proof-token' });
-    expect(next.status).toBe('PUBLISHED');
-    expect(next.publishProof).toBe('proof-token');
-    const pending = await listPending();
-    expect(pending.map((p) => p.id)).not.toContain(d.id);
+    const publishing = await transition(d.id, 'PUBLISHING', { publishProof: 'proof-token' });
+    expect(publishing.status).toBe('PUBLISHING');
+    expect(publishing.publishProof).toBe('proof-token');
+    expect(publishing.publish_attempted_at).toBeGreaterThan(0);
+    // Pending index drops as soon as we leave PENDING_REVIEW.
+    expect((await listPending()).map((p) => p.id)).not.toContain(d.id);
+
+    const published = await transition(d.id, 'PUBLISHED', { publishedUrn: 'urn:li:share:42' });
+    expect(published.status).toBe('PUBLISHED');
+    expect(published.publishedUrn).toBe('urn:li:share:42');
+    // publishProof is preserved across PUBLISHING → PUBLISHED.
+    expect(published.publishProof).toBe('proof-token');
   });
 
-  it('rejects PENDING_REVIEW → PUBLISHED without a proof', async () => {
+  it('rejects PENDING_REVIEW → PUBLISHING without a proof', async () => {
     const d = await createDraft(freshInput());
     await transition(d.id, 'PENDING_REVIEW');
-    await expect(transition(d.id, 'PUBLISHED')).rejects.toBeInstanceOf(MissingPublishProofError);
+    await expect(transition(d.id, 'PUBLISHING')).rejects.toBeInstanceOf(MissingPublishProofError);
   });
 
-  it('rejects DRAFTED → PUBLISHED (must go through PENDING_REVIEW)', async () => {
+  it('rejects PUBLISHING → PUBLISHED without a URN', async () => {
+    const d = await createDraft(freshInput());
+    await transition(d.id, 'PENDING_REVIEW');
+    await transition(d.id, 'PUBLISHING', { publishProof: 'p' });
+    await expect(transition(d.id, 'PUBLISHED')).rejects.toBeInstanceOf(MissingPublishedUrnError);
+  });
+
+  it('rejects direct PENDING_REVIEW → PUBLISHED (must go through PUBLISHING)', async () => {
+    const d = await createDraft(freshInput());
+    await transition(d.id, 'PENDING_REVIEW');
+    await expect(
+      transition(d.id, 'PUBLISHED', { publishedUrn: 'u' }),
+    ).rejects.toBeInstanceOf(TransitionError);
+  });
+
+  it('rejects DRAFTED → PUBLISHING (must go through PENDING_REVIEW)', async () => {
     const d = await createDraft(freshInput());
     await expect(
-      transition(d.id, 'PUBLISHED', { publishProof: 'p' }),
+      transition(d.id, 'PUBLISHING', { publishProof: 'p' }),
     ).rejects.toBeInstanceOf(TransitionError);
+  });
+
+  it('allows PUBLISHING → PUBLISH_FAILED with an error message', async () => {
+    const d = await createDraft(freshInput());
+    await transition(d.id, 'PENDING_REVIEW');
+    await transition(d.id, 'PUBLISHING', { publishProof: 'p' });
+    const failed = await transition(d.id, 'PUBLISH_FAILED', { publishError: 'LinkedIn 502' });
+    expect(failed.status).toBe('PUBLISH_FAILED');
+    expect(failed.publishError).toBe('LinkedIn 502');
+  });
+
+  it('PUBLISH_FAILED → PUBLISHING retries with a fresh proof', async () => {
+    const d = await createDraft(freshInput());
+    await transition(d.id, 'PENDING_REVIEW');
+    await transition(d.id, 'PUBLISHING', { publishProof: 'p1' });
+    await transition(d.id, 'PUBLISH_FAILED', { publishError: 'fail' });
+    // Retry with a different proof; version must not change between attempts.
+    const v = (await getDraft(d.id))!.version;
+    const retry = await transition(d.id, 'PUBLISHING', { publishProof: 'p2' });
+    expect(retry.status).toBe('PUBLISHING');
+    expect(retry.publishProof).toBe('p2');
+    expect(retry.version).toBe(v);
+  });
+
+  it('PUBLISH_FAILED → DISCARDED gives up cleanly', async () => {
+    const d = await createDraft(freshInput());
+    await transition(d.id, 'PENDING_REVIEW');
+    await transition(d.id, 'PUBLISHING', { publishProof: 'p' });
+    await transition(d.id, 'PUBLISH_FAILED', { publishError: 'fail' });
+    const discarded = await transition(d.id, 'DISCARDED');
+    expect(discarded.status).toBe('DISCARDED');
   });
 
   it('rejects illegal transitions out of terminal states', async () => {
     const d = await createDraft(freshInput());
     await transition(d.id, 'PENDING_REVIEW');
-    await transition(d.id, 'PUBLISHED', { publishProof: 'p' });
+    await transition(d.id, 'PUBLISHING', { publishProof: 'p' });
+    await transition(d.id, 'PUBLISHED', { publishedUrn: 'u' });
     await expect(transition(d.id, 'PENDING_REVIEW')).rejects.toBeInstanceOf(TransitionError);
     await expect(
-      transition(d.id, 'PUBLISHED', { publishProof: 'p' }),
+      transition(d.id, 'PUBLISHED', { publishedUrn: 'u' }),
     ).rejects.toBeInstanceOf(TransitionError);
 
     const d2 = await createDraft(freshInput());
@@ -126,10 +181,13 @@ describe('transition', () => {
     const cases: Array<[DraftStatus, DraftStatus]> = [
       ['DRAFTED', 'EDITED'],
       ['DRAFTED', 'STALE'],
+      ['DRAFTED', 'PUBLISHING'],
       ['DRAFTED', 'PUBLISHED'],
       ['PUBLISHED', 'DRAFTED'],
       ['DISCARDED', 'PENDING_REVIEW'],
+      ['STALE', 'PUBLISHING'],
       ['STALE', 'PUBLISHED'],
+      ['PENDING_REVIEW', 'PUBLISHED'],
     ];
     for (const [from, to] of cases) {
       const d = await createDraft(freshInput());
@@ -137,17 +195,24 @@ describe('transition', () => {
         // Steer the draft into the `from` state through legal moves.
         if (from === 'PUBLISHED') {
           await transition(d.id, 'PENDING_REVIEW');
-          await transition(d.id, 'PUBLISHED', { publishProof: 'p' });
+          await transition(d.id, 'PUBLISHING', { publishProof: 'p' });
+          await transition(d.id, 'PUBLISHED', { publishedUrn: 'u' });
         } else if (from === 'DISCARDED') {
           await transition(d.id, 'DISCARDED');
         } else if (from === 'STALE') {
           await transition(d.id, 'PENDING_REVIEW');
           await transition(d.id, 'STALE');
+        } else if (from === 'PENDING_REVIEW') {
+          await transition(d.id, 'PENDING_REVIEW');
         }
       }
-      await expect(
-        transition(d.id, to, to === 'PUBLISHED' ? { publishProof: 'p' } : undefined),
-      ).rejects.toBeInstanceOf(TransitionError);
+      const opts =
+        to === 'PUBLISHING'
+          ? { publishProof: 'p' }
+          : to === 'PUBLISHED'
+            ? { publishedUrn: 'u' }
+            : undefined;
+      await expect(transition(d.id, to, opts)).rejects.toBeInstanceOf(TransitionError);
     }
   });
 });
