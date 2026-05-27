@@ -34,9 +34,7 @@ export async function storeChallenge(sessionId: string, challenge: string): Prom
 }
 
 export async function consumeChallenge(sessionId: string): Promise<string | null> {
-  const kv = getKv();
-  const c = await kv.get<string>(k.webauthnChallenge(sessionId));
-  if (!c) return null;
-  await kv.del(k.webauthnChallenge(sessionId));
-  return c;
+  // Atomic read-and-delete: a captured challenge must not survive two concurrent
+  // assert/verify attempts. See claimMagicNonce for the same rationale.
+  return getKv().getdel<string>(k.webauthnChallenge(sessionId));
 }

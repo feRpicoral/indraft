@@ -38,11 +38,10 @@ export async function issueMagicNonce(args: {
 }
 
 export async function claimMagicNonce(nonce: string): Promise<string | null> {
-  const kv = getKv();
-  const id = await kv.get<string>(k.magicNonce(nonce));
-  if (!id) return null;
-  await kv.del(k.magicNonce(nonce));
-  return id;
+  // Atomic read-and-delete: two concurrent claims of the same nonce would
+  // otherwise both see the value before either delete landed, defeating the
+  // single-use guarantee.
+  return getKv().getdel<string>(k.magicNonce(nonce));
 }
 
 export async function getLinkedInReauthNotifiedAt(): Promise<number | null> {
