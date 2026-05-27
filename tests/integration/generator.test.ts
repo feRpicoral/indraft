@@ -122,7 +122,7 @@ describe('generator.draft', () => {
       },
     );
 
-    expect(llm.calls).toBe(3); // max_retries=2 means 3 attempts
+    expect(llm.calls).toBe(3);
     expect(res.linter_warnings.length).toBeGreaterThan(0);
     expect(res.linter_warnings.some((w) => w.startsWith('genericOpeners'))).toBe(true);
   });

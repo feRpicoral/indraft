@@ -18,11 +18,6 @@ const optionalUrl = z.preprocess(
   z.string().url().optional(),
 );
 
-const optionalEmail = z.preprocess(
-  (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
-  z.string().email().optional(),
-);
-
 const EnvSchema = z.object({
   // LinkedIn
   LINKEDIN_CLIENT_ID: optionalString,
@@ -57,9 +52,6 @@ const EnvSchema = z.object({
   // App URL (used to build magic links)
   APP_URL: optionalUrl,
 });
-
-// keep optionalEmail unused-but-exported in case future routes need it
-void optionalEmail;
 
 export type Env = z.infer<typeof EnvSchema>;
 

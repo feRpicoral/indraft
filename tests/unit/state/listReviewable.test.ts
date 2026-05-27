@@ -48,9 +48,7 @@ describe('listReviewable', () => {
     const pending = await listPending();
     const reviewable = await listReviewable();
 
-    // listPending no longer surfaces it…
     expect(pending.map((x) => x.id)).not.toContain(d.id);
-    // …but listReviewable does.
     expect(reviewable.map((x) => x.id)).toContain(d.id);
   });
 

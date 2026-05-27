@@ -60,7 +60,6 @@ export async function runScheduledJob(opts: RunOpts = {}): Promise<RunResult> {
   const env = loadEnv();
   const kv = getKv();
 
-  // 1. Lock
   const lockOk = await kv.set(k.cronLock(), String(now), { ex: CRON_LOCK_TTL_S, nx: true });
   if (!lockOk) {
     log.warn('cron lock held; skipping');
@@ -68,7 +67,6 @@ export async function runScheduledJob(opts: RunOpts = {}): Promise<RunResult> {
   }
 
   try {
-    // 2. Day/hour filter (DST-tolerant). Bypassed by force=true (manual runs).
     if (!opts.force) {
       const { day, hour } = localDayAndHour(new Date(now), cfg.schedule.timezone);
       if (!cfg.schedule.days.includes(day)) {
@@ -83,42 +81,35 @@ export async function runScheduledJob(opts: RunOpts = {}): Promise<RunResult> {
       log.info('scheduler force=true; bypassing day/hour filter');
     }
 
-    // 3. Token preflight
     const tokenWarnings = await preflightToken(cfg, env, now);
     if (tokenWarnings.fatal) {
       return { skipped: tokenWarnings.fatal, warnings: tokenWarnings.notes };
     }
 
-    // 4. Collect
     const sources = await collect(cfg);
     if (sources.length === 0) {
       log.warn('no sources collected');
       return { skipped: 'no_sources', warnings: tokenWarnings.notes };
     }
 
-    // 5. Pillar rotation + chosen item
     const recent = await recentPillars();
     const last = await lastPillar();
     const targetPillar = pickNextPillar(cfg.content.pillars, last, recent);
     const chosenItem = pickChosenItem(sources);
 
-    // Dedup against history
     if (await isDuplicate({ source_url: chosenItem.url, body: chosenItem.title })) {
       log.info('skipping duplicate item', { url: chosenItem.url });
       return { skipped: 'duplicate', warnings: tokenWarnings.notes };
     }
 
-    // 6. Generate
     const llm = buildProvider(cfg);
     const { output, linter_warnings } = await generateDraft(
       { cfg, llm },
       { sources, chosenItem, targetPillar, recentPillars: recent },
     );
 
-    // 7. Media
     const media = await selectMedia(output, cfg);
 
-    // 8. Persist as DRAFTED → PENDING_REVIEW
     const draft = await createDraft({
       body: output.body,
       content_kind: output.content_kind,
@@ -137,7 +128,6 @@ export async function runScheduledJob(opts: RunOpts = {}): Promise<RunResult> {
     });
     const pending = await transition(draft.id, 'PENDING_REVIEW');
 
-    // 9. Notify (unless dry run)
     if (!opts.dryRun) {
       const nonce = newNonce();
       const ttlSec = cfg.review.link_ttl_hours * 3600;
@@ -250,7 +240,6 @@ function pickNextPillar(
 }
 
 function pickChosenItem(sources: SourceItem[]): SourceItem {
-  // Sources are pre-sorted by score; take the top. Fall back to most recent
-  // if scores are all zero.
+  // collect() returns sources sorted by score.
   return sources[0]!;
 }

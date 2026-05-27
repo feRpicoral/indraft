@@ -49,7 +49,6 @@ export function parseJson<T>(raw: string, schema: z.ZodType<T>): T {
 }
 
 function stripFences(raw: string): string {
-  // ```json ... ``` or ``` ... ```
   const fence = /^```(?:json)?\s*\n?([\s\S]*?)\n?```$/m;
   const match = raw.trim().match(fence);
   return match?.[1] ?? raw;

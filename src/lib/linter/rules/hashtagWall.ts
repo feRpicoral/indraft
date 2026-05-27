@@ -52,7 +52,6 @@ function findTrailingBlockStart(body: string): number {
     }
     break;
   }
-  // i is the last non-hashtag line; the trailing block starts after it.
   let charIdx = 0;
   for (let j = 0; j <= i; j++) charIdx += lines[j]!.length + 1; // +1 for \n
   return charIdx;

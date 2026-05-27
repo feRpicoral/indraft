@@ -123,7 +123,6 @@ async function runWithRetry(
       log.info('linter rejected draft; retrying', { attempt, warnings: lastWarnings });
     }
   }
-  // Out of retries — surface the best attempt with warnings rather than block.
   if (!lastOutput) throw new Error('generator failed to produce any parseable output');
   return { output: lastOutput, linter_warnings: lastWarnings };
 }

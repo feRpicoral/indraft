@@ -34,8 +34,8 @@ llm:
 
     const cfg = loadConfig(path);
 
-    expect(cfg.schedule.hour).toBe(9); // default
-    expect(cfg.post.link_placement).toBe('none'); // research-driven default
+    expect(cfg.schedule.hour).toBe(9);
+    expect(cfg.post.link_placement).toBe('none');
     expect(cfg.content.linter.max_em_dashes).toBe(2);
     expect(cfg.review.link_ttl_hours).toBe(24);
   });

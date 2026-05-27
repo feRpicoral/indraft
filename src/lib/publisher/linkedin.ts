@@ -37,8 +37,6 @@ export class LinkedInApiPublisher implements Publisher {
   }
 
   async publish(post: PublishInput): Promise<PublishResult> {
-    // Discriminate on what got passed: article kind first (suppresses image/link),
-    // then single-image, then text.
     let imageUrn: string | undefined;
     let thumbnailUrn: string | undefined;
     if (post.article?.thumbnail?.bytes) {

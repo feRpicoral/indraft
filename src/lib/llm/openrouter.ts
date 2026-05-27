@@ -113,7 +113,6 @@ export class OpenRouterProvider implements LLMProvider {
       return { type: 'text', text: p.text };
     });
     if (cacheBreak) {
-      // Attach cache_control to the last text part (vision parts are skipped).
       for (let i = parts.length - 1; i >= 0; i--) {
         const part = parts[i];
         if (part && part.type === 'text') {

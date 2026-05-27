@@ -14,7 +14,6 @@ export function registerClone(program: Command): void {
     .action(async (sourceId: string) => {
       const source = await getDraft(sourceId);
       if (!source) {
-        // eslint-disable-next-line no-console
         console.error(`draft not found: ${sourceId}`);
         process.exit(1);
       }
@@ -45,7 +44,6 @@ export function registerClone(program: Command): void {
       const base = env.APP_URL ?? 'http://localhost:3000';
       const url = `${base}/api/review/consume?token=${token}`;
 
-      // eslint-disable-next-line no-console
       console.log(
         JSON.stringify(
           {

@@ -23,7 +23,6 @@ beforeAll(() => {
   process.env.NOTIFY_TO_ADDRESS = 'me@example.com';
   process.env.NOTIFY_FROM_ADDRESS = 'noreply@example.com';
   process.env.APP_URL = 'https://example.test';
-  // No RESEND_API_KEY → ConsoleNotifier; no real email is sent.
   delete process.env.RESEND_API_KEY;
 
   tmp = mkdtempSync(join(tmpdir(), 'indraft-access-req-'));
@@ -111,10 +110,7 @@ describe('POST /api/access/request rate limit', () => {
     expect(r3.status).toBe(429);
   });
 
-  it('does not consume the lock when there are zero pending drafts', async () => {
-    // No drafts seeded → ok response, zero sent. Lock is still taken (we don't
-    // distinguish empty from full), so the next call still throttles. That's
-    // the intended behavior: even an enumeration probe burns one window.
+  it('consumes the lock even when there are zero pending drafts', async () => {
     const r1 = await callPost();
     const r2 = await callPost();
 

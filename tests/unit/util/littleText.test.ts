@@ -12,8 +12,6 @@ describe('escapeLittleTextFormat', () => {
     const input = `\\ | { } @ [ ] ( ) < > # * _ ~`;
 
     const out = escapeLittleTextFormat(input);
-
-    // Each reserved char gets a leading backslash.
     expect(out).toBe('\\\\ \\| \\{ \\} \\@ \\[ \\] \\( \\) \\< \\> \\# \\* \\_ \\~');
   });
 

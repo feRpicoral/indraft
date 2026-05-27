@@ -109,7 +109,6 @@ export async function listReviewable(): Promise<Draft[]> {
  */
 export const PUBLISHING_TIMEOUT_MS = 5 * 60 * 1000;
 
-/** True iff the draft is PUBLISHING and the attempt timestamp is past the timeout. */
 export function isStalePublishing(d: Draft, now: number = Date.now()): boolean {
   if (d.status !== 'PUBLISHING') return false;
   const attemptedAt = d.publish_attempted_at ?? 0;
@@ -117,7 +116,6 @@ export function isStalePublishing(d: Draft, now: number = Date.now()): boolean {
 }
 
 interface TransitionOpts {
-  /** Partial fields to write atomically with the status change. */
   patch?: Partial<Draft>;
   /**
    * Required when transitioning to PUBLISHING. Opaque proof token derived from
@@ -125,9 +123,7 @@ interface TransitionOpts {
    * only enforces presence. The publish route is responsible for the verify.
    */
   publishProof?: string;
-  /** Required when transitioning PUBLISHING → PUBLISHED. */
   publishedUrn?: string;
-  /** Optional error captured when transitioning to PUBLISH_FAILED. */
   publishError?: string;
 }
 

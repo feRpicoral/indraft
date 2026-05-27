@@ -18,7 +18,6 @@ const WEEKDAY_MAP: Record<string, WeekdayCode> = {
   Sun: 'SUN',
 };
 
-/** Get the local-day-of-week and hour for `instant` in `timezone`. */
 export function localDayAndHour(
   instant: Date,
   timezone: string,

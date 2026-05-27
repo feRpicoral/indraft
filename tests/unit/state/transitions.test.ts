@@ -66,11 +66,9 @@ describe('transition', () => {
     expect(publishing.status).toBe('PUBLISHING');
     expect(publishing.publishProof).toBe('proof-token');
     expect(publishing.publish_attempted_at).toBeGreaterThan(0);
-    // Pending index drops as soon as we leave PENDING_REVIEW.
     expect(pendingAfterPublishing.map((p) => p.id)).not.toContain(d.id);
     expect(published.status).toBe('PUBLISHED');
     expect(published.publishedUrn).toBe('urn:li:share:42');
-    // publishProof is preserved across PUBLISHING → PUBLISHED.
     expect(published.publishProof).toBe('proof-token');
   });
 
@@ -163,9 +161,6 @@ describe('transition', () => {
     await transition(d.id, 'PENDING_REVIEW');
 
     const edited = await transition(d.id, 'EDITED', { patch: { body: 'updated' } });
-
-    // EDITED is transient: after the cascade, we should be back at PENDING_REVIEW
-    // with version bumped.
     expect(edited.version).toBe(2);
     expect(edited.status).toBe('PENDING_REVIEW');
     expect(edited.body).toBe('updated');
