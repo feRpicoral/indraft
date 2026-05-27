@@ -40,6 +40,7 @@ const item: SourceItem = {
 describe('buildSystemPrompt', () => {
   it('embeds the pillars and locked link_placement default', () => {
     const sys = buildSystemPrompt(cfg);
+
     expect(sys).toContain('fullstack');
     expect(sys).toContain('cs_fundamentals');
     expect(sys).toContain('Default link_placement is "none"');
@@ -48,6 +49,7 @@ describe('buildSystemPrompt', () => {
 
   it('lists the most common AI tells explicitly', () => {
     const sys = buildSystemPrompt(cfg);
+
     expect(sys).toContain("Let's dive in");
     expect(sys).toContain("I'm thrilled to share");
     expect(sys).toContain('No em-dash spam');
@@ -63,6 +65,7 @@ describe('buildDraftMessages', () => {
       targetPillar: 'fullstack',
       recentPillars: ['cs_fundamentals'],
     });
+
     expect(messages).toHaveLength(3);
     expect(cacheBreakpoints).toEqual([0, 1]);
     expect(messages[0]?.content).toContain('PROFILE');
@@ -80,11 +83,13 @@ describe('buildDraftMessages', () => {
       targetPillar: 'fullstack',
       recentPillars: [],
     });
+
     expect(messages[2]?.content).toContain('No recent pillar history');
   });
 
   it('truncates very long source summaries', () => {
     const huge: SourceItem = { ...item, summary: 'x'.repeat(2000) };
+
     const { messages } = buildDraftMessages({
       cfg,
       sources: [huge],
@@ -92,6 +97,7 @@ describe('buildDraftMessages', () => {
       targetPillar: 'fullstack',
       recentPillars: [],
     });
+
     expect((messages[1]?.content as string).length).toBeLessThan(2500);
   });
 });
@@ -120,6 +126,7 @@ describe('buildEditMessages', () => {
       message: 'tighten the opener',
     });
     const content = messages[2]?.content as string;
+
     expect(content).toContain('content_kind: text');
     expect(content).toContain('Preserve content_kind ("text")');
   });
@@ -134,6 +141,7 @@ describe('buildEditMessages', () => {
         thumbnail: { kind: 'owner', bytes: 'abc', mime: 'image/png' },
       },
     };
+
     const { messages } = buildEditMessages({
       cfg,
       sources: [item],
@@ -141,6 +149,7 @@ describe('buildEditMessages', () => {
       message: 'sharpen the angle',
     });
     const content = messages[2]?.content as string;
+
     expect(content).toContain('content_kind: article');
     expect(content).toContain('article.source: https://example.com/the-piece');
     expect(content).toContain('article.title: A specific article');
@@ -155,6 +164,7 @@ describe('buildEditMessages', () => {
       message: 'tighten',
     });
     const content = messages[2]?.content as string;
+
     expect(content).not.toMatch(/^article\.source:/m);
     expect(content).not.toMatch(/^article\.title:/m);
     expect(content).not.toMatch(/^article\.thumbnail:/m);

@@ -20,6 +20,7 @@ describe('selectBackend production guard', () => {
     vi.stubEnv('VERCEL_ENV', 'production');
     vi.stubEnv('NODE_ENV', 'production');
     const { getKv, KvNotConfiguredError } = await loadKv();
+
     expect(() => getKv()).toThrow(KvNotConfiguredError);
   });
 
@@ -30,6 +31,7 @@ describe('selectBackend production guard', () => {
     vi.stubEnv('VERCEL_ENV', '');
     vi.stubEnv('NODE_ENV', 'production');
     const { getKv, KvNotConfiguredError } = await loadKv();
+
     expect(() => getKv()).toThrow(KvNotConfiguredError);
   });
 
@@ -40,6 +42,7 @@ describe('selectBackend production guard', () => {
     vi.stubEnv('VERCEL_ENV', 'preview');
     vi.stubEnv('NODE_ENV', 'production'); // Next sets this in `next build`
     const { getKv } = await loadKv();
+
     expect(() => getKv()).not.toThrow();
   });
 
@@ -48,6 +51,7 @@ describe('selectBackend production guard', () => {
     vi.stubEnv('VERCEL_ENV', 'production');
     vi.stubEnv('NODE_ENV', 'production');
     const { getKv } = await loadKv();
+
     expect(() => getKv()).not.toThrow();
   });
 
@@ -58,6 +62,7 @@ describe('selectBackend production guard', () => {
     vi.stubEnv('VERCEL_ENV', '');
     vi.stubEnv('NODE_ENV', 'development');
     const { getKv } = await loadKv();
+
     expect(() => getKv()).not.toThrow();
   });
 });

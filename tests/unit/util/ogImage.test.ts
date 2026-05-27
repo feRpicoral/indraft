@@ -32,7 +32,9 @@ describe('fetchOgImage', () => {
         }),
       ),
     );
+
     const result = await fetchOgImage('https://example.com/article');
+
     expect(result).not.toBeNull();
     expect(result?.mime).toBe('image/png');
     expect(result?.alt).toBe('Cover photo');
@@ -53,7 +55,9 @@ describe('fetchOgImage', () => {
         }),
       ),
     );
+
     const result = await fetchOgImage('https://example.com/article');
+
     expect(result?.mime).toBe('image/jpeg');
   });
 
@@ -69,7 +73,9 @@ describe('fetchOgImage', () => {
         }),
       ),
     );
+
     const result = await fetchOgImage('https://example.com/article');
+
     expect(result).not.toBeNull();
   });
 
@@ -87,7 +93,9 @@ describe('fetchOgImage', () => {
         }),
       ),
     );
+
     const result = await fetchOgImage('https://example.com/article');
+
     expect(result?.alt).toBe('The Headline');
   });
 
@@ -97,7 +105,10 @@ describe('fetchOgImage', () => {
         HttpResponse.html(`<html><head><title>x</title></head></html>`),
       ),
     );
-    expect(await fetchOgImage('https://example.com/article')).toBeNull();
+
+    const result = await fetchOgImage('https://example.com/article');
+
+    expect(result).toBeNull();
   });
 
   it('returns null when image download fails', async () => {
@@ -107,7 +118,10 @@ describe('fetchOgImage', () => {
       ),
       http.get('https://example.com/og.png', () => new HttpResponse(null, { status: 404 })),
     );
-    expect(await fetchOgImage('https://example.com/article')).toBeNull();
+
+    const result = await fetchOgImage('https://example.com/article');
+
+    expect(result).toBeNull();
   });
 
   it('returns null for unsupported mime types', async () => {
@@ -122,13 +136,19 @@ describe('fetchOgImage', () => {
         }),
       ),
     );
-    expect(await fetchOgImage('https://example.com/article')).toBeNull();
+
+    const result = await fetchOgImage('https://example.com/article');
+
+    expect(result).toBeNull();
   });
 
   it('returns null when the HTML page itself 404s', async () => {
     server.use(
       http.get('https://example.com/article', () => new HttpResponse(null, { status: 404 })),
     );
-    expect(await fetchOgImage('https://example.com/article')).toBeNull();
+
+    const result = await fetchOgImage('https://example.com/article');
+
+    expect(result).toBeNull();
   });
 });

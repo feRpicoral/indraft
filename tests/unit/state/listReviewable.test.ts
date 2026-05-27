@@ -33,7 +33,9 @@ describe('listReviewable', () => {
     await transition(d1.id, 'PENDING_REVIEW');
     const d2 = await createDraft(fresh({ body: 'two' }));
     await transition(d2.id, 'PENDING_REVIEW');
+
     const reviewable = await listReviewable();
+
     expect(reviewable.map((d) => d.id).sort()).toEqual([d1.id, d2.id].sort());
   });
 
@@ -43,18 +45,23 @@ describe('listReviewable', () => {
     await transition(d.id, 'PUBLISHING', { publishProof: 'p' });
     await transition(d.id, 'PUBLISH_FAILED', { publishError: 'boom' });
 
-    expect((await listPending()).map((x) => x.id)).not.toContain(d.id);
-    expect((await listReviewable()).map((x) => x.id)).toContain(d.id);
+    const pending = await listPending();
+    const reviewable = await listReviewable();
+
+    expect(pending.map((x) => x.id)).not.toContain(d.id);
+    expect(reviewable.map((x) => x.id)).toContain(d.id);
   });
 
   it('does not duplicate when a draft appears in both indexes (defensive)', async () => {
     const d = await createDraft(fresh());
     await transition(d.id, 'PENDING_REVIEW');
+
     // The state machine doesn't allow membership in both indexes simultaneously
     // — this guards against an index-set leak by asserting de-dup behavior even
     // if one were ever introduced.
     const reviewable = await listReviewable();
     const ids = reviewable.map((x) => x.id);
+
     expect(ids.filter((id) => id === d.id)).toHaveLength(1);
   });
 
@@ -67,6 +74,7 @@ describe('listReviewable', () => {
     await transition(published.id, 'PUBLISHED', { publishedUrn: 'u' });
 
     const reviewable = await listReviewable();
+
     expect(reviewable.map((d) => d.id)).not.toContain(discarded.id);
     expect(reviewable.map((d) => d.id)).not.toContain(published.id);
   });

@@ -32,7 +32,10 @@ describe('isStalePublishing', () => {
     const d = await createDraft(fresh());
     await transition(d.id, 'PENDING_REVIEW');
     const publishing = await transition(d.id, 'PUBLISHING', { publishProof: 'p' });
-    expect(isStalePublishing(publishing)).toBe(false);
+
+    const stale = isStalePublishing(publishing);
+
+    expect(stale).toBe(false);
   });
 
   it('returns true once publish_attempted_at is older than the timeout', async () => {
@@ -40,16 +43,20 @@ describe('isStalePublishing', () => {
     await transition(d.id, 'PENDING_REVIEW');
     const publishing = await transition(d.id, 'PUBLISHING', { publishProof: 'p' });
     const future = (publishing.publish_attempted_at ?? 0) + PUBLISHING_TIMEOUT_MS + 1;
-    expect(isStalePublishing(publishing, future)).toBe(true);
+
+    const stale = isStalePublishing(publishing, future);
+
+    expect(stale).toBe(true);
   });
 
   it('returns false for non-PUBLISHING states regardless of timestamp', async () => {
     const d = await createDraft(fresh());
     await transition(d.id, 'PENDING_REVIEW');
     const pending = await transition(d.id, 'STALE');
-    expect(
-      isStalePublishing(pending, Date.now() + 10 * PUBLISHING_TIMEOUT_MS),
-    ).toBe(false);
+
+    const stale = isStalePublishing(pending, Date.now() + 10 * PUBLISHING_TIMEOUT_MS);
+
+    expect(stale).toBe(false);
   });
 
   it('treats a missing publish_attempted_at as stale (legacy / corrupt records)', async () => {
@@ -59,6 +66,9 @@ describe('isStalePublishing', () => {
     await transition(d.id, 'PENDING_REVIEW');
     const publishing = await transition(d.id, 'PUBLISHING', { publishProof: 'p' });
     const synthetic = { ...publishing, publish_attempted_at: undefined };
-    expect(isStalePublishing(synthetic)).toBe(true);
+
+    const stale = isStalePublishing(synthetic);
+
+    expect(stale).toBe(true);
   });
 });

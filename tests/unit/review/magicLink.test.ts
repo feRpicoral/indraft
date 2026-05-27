@@ -10,7 +10,9 @@ describe('signMagicLink / verifyMagicLink', () => {
       payload: { draft_id: 'd1', nonce: 'n1', exp },
       secret: SECRET,
     });
+
     const r = verifyMagicLink({ token, secret: SECRET });
+
     expect(r?.draft_id).toBe('d1');
     expect(r?.nonce).toBe('n1');
     expect(r?.exp).toBe(exp);
@@ -21,7 +23,10 @@ describe('signMagicLink / verifyMagicLink', () => {
       payload: { draft_id: 'd1', nonce: 'n1', exp: Date.now() - 1 },
       secret: SECRET,
     });
-    expect(verifyMagicLink({ token, secret: SECRET })).toBeNull();
+
+    const r = verifyMagicLink({ token, secret: SECRET });
+
+    expect(r).toBeNull();
   });
 
   it('rejects a tampered payload', () => {
@@ -31,7 +36,10 @@ describe('signMagicLink / verifyMagicLink', () => {
     });
     const parts = token.split('.');
     const tampered = `${parts[0]?.slice(0, -1)}X.${parts[1]}`;
-    expect(verifyMagicLink({ token: tampered, secret: SECRET })).toBeNull();
+
+    const r = verifyMagicLink({ token: tampered, secret: SECRET });
+
+    expect(r).toBeNull();
   });
 
   it('rejects a token signed by a different secret', () => {
@@ -39,12 +47,19 @@ describe('signMagicLink / verifyMagicLink', () => {
       payload: { draft_id: 'd1', nonce: 'n1', exp: Date.now() + 60_000 },
       secret: SECRET,
     });
-    expect(verifyMagicLink({ token, secret: 'different-secret-of-equal-length-aaa' })).toBeNull();
+
+    const r = verifyMagicLink({ token, secret: 'different-secret-of-equal-length-aaa' });
+
+    expect(r).toBeNull();
   });
 
   it('rejects malformed tokens', () => {
-    expect(verifyMagicLink({ token: 'no-dot', secret: SECRET })).toBeNull();
-    expect(verifyMagicLink({ token: '', secret: SECRET })).toBeNull();
-    expect(verifyMagicLink({ token: 'a.b.c', secret: SECRET })).toBeNull();
+    const noDot = verifyMagicLink({ token: 'no-dot', secret: SECRET });
+    const empty = verifyMagicLink({ token: '', secret: SECRET });
+    const tooManyParts = verifyMagicLink({ token: 'a.b.c', secret: SECRET });
+
+    expect(noDot).toBeNull();
+    expect(empty).toBeNull();
+    expect(tooManyParts).toBeNull();
   });
 });

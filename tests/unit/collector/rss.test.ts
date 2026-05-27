@@ -34,6 +34,7 @@ const atom = `<?xml version="1.0"?>
 describe('parseFeed (RSS 2.0)', () => {
   it('extracts items with normalized fields', () => {
     const items = parseFeed(rss2, 'example.com', 'dev');
+
     expect(items).toHaveLength(2);
     expect(items[0]?.title).toBe('First post');
     expect(items[0]?.url).toBe('https://example.com/1');
@@ -46,6 +47,7 @@ describe('parseFeed (RSS 2.0)', () => {
 describe('parseFeed (Atom)', () => {
   it('extracts entries with normalized fields', () => {
     const items = parseFeed(atom, 'example.com', 'ai_research');
+
     expect(items).toHaveLength(1);
     expect(items[0]?.title).toBe('Atom entry one');
     expect(items[0]?.url).toBe('https://example.com/a1');
@@ -56,6 +58,8 @@ describe('parseFeed (Atom)', () => {
 
 describe('parseFeed (unknown)', () => {
   it('returns [] on garbage input', () => {
-    expect(parseFeed('<not>a feed</not>', 's', 'dev')).toEqual([]);
+    const items = parseFeed('<not>a feed</not>', 's', 'dev');
+
+    expect(items).toEqual([]);
   });
 });

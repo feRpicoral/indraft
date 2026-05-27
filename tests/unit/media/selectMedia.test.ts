@@ -76,6 +76,7 @@ describe('selectMedia (stock)', () => {
     );
 
     const media = await selectMedia(out(), cfg());
+
     expect(media).toBeDefined();
     expect(media?.kind).toBe('stock');
     expect(media?.url).toBe('https://images.pexels.com/photo-1/large.jpg');
@@ -103,6 +104,7 @@ describe('selectMedia (stock)', () => {
     );
 
     const media = await selectMedia(out(), cfg());
+
     expect(media).toBeUndefined();
   });
 
@@ -127,27 +129,34 @@ describe('selectMedia (stock)', () => {
       ),
     );
 
-    expect(await selectMedia(out(), cfg())).toBeUndefined();
+    const media = await selectMedia(out(), cfg());
+
+    expect(media).toBeUndefined();
   });
 
   it('returns undefined when no PEXELS_API_KEY is set', async () => {
     vi.stubEnv('PEXELS_API_KEY', '');
-    expect(await selectMedia(out(), cfg())).toBeUndefined();
+
+    const media = await selectMedia(out(), cfg());
+
+    expect(media).toBeUndefined();
   });
 
   it('returns undefined when image_source is "none"', async () => {
-    expect(
-      await selectMedia(out({ image_source: 'none', needs_image: false }), cfg()),
-    ).toBeUndefined();
+    const media = await selectMedia(out({ image_source: 'none', needs_image: false }), cfg());
+
+    expect(media).toBeUndefined();
   });
 
   it('returns undefined when image_source is "owner" (UI handles owner uploads)', async () => {
-    expect(await selectMedia(out({ image_source: 'owner' }), cfg())).toBeUndefined();
+    const media = await selectMedia(out({ image_source: 'owner' }), cfg());
+
+    expect(media).toBeUndefined();
   });
 
   it('returns undefined when image_source is "ai" but AI is gated off', async () => {
-    expect(
-      await selectMedia(out({ image_source: 'ai', image_concept: 'a cat' }), cfg()),
-    ).toBeUndefined();
+    const media = await selectMedia(out({ image_source: 'ai', image_concept: 'a cat' }), cfg());
+
+    expect(media).toBeUndefined();
   });
 });

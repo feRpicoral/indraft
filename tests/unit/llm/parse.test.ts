@@ -7,22 +7,32 @@ const Schema = z.object({ body: z.string(), pillar: z.string() });
 describe('parseJson', () => {
   it('parses clean JSON', () => {
     const out = parseJson(`{"body":"hi","pillar":"fullstack"}`, Schema);
+
     expect(out.body).toBe('hi');
   });
 
   it('strips markdown fences', () => {
     const raw = '```json\n{"body":"hi","pillar":"x"}\n```';
-    expect(parseJson(raw, Schema).pillar).toBe('x');
+
+    const out = parseJson(raw, Schema);
+
+    expect(out.pillar).toBe('x');
   });
 
   it('strips generic fences', () => {
     const raw = '```\n{"body":"hi","pillar":"x"}\n```';
-    expect(parseJson(raw, Schema).pillar).toBe('x');
+
+    const out = parseJson(raw, Schema);
+
+    expect(out.pillar).toBe('x');
   });
 
   it('falls back to first/last brace extraction when wrapped in prose', () => {
     const raw = `Here's the post:\n{"body":"hi","pillar":"x"}\nLet me know!`;
-    expect(parseJson(raw, Schema).body).toBe('hi');
+
+    const out = parseJson(raw, Schema);
+
+    expect(out.body).toBe('hi');
   });
 
   it('throws LlmJsonParseError on truly malformed output', () => {

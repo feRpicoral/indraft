@@ -20,18 +20,28 @@ const mk = (hoursAgo: number): Draft => ({
 
 describe('isStale', () => {
   it('false before the threshold', () => {
-    expect(isStale(mk(24), 48)).toBe(false);
+    const draft = mk(24);
+
+    expect(isStale(draft, 48)).toBe(false);
   });
+
   it('false right at the threshold (strictly greater)', () => {
-    expect(isStale(mk(48), 48)).toBe(false);
+    const draft = mk(48);
+
+    expect(isStale(draft, 48)).toBe(false);
   });
+
   it('true past the threshold', () => {
-    expect(isStale(mk(72), 48)).toBe(true);
+    const draft = mk(72);
+
+    expect(isStale(draft, 48)).toBe(true);
   });
 });
 
 describe('hoursSinceUpdate', () => {
   it('returns ~hoursAgo', () => {
-    expect(hoursSinceUpdate(mk(5))).toBeCloseTo(5, 1);
+    const draft = mk(5);
+
+    expect(hoursSinceUpdate(draft)).toBeCloseTo(5, 1);
   });
 });

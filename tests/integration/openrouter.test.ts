@@ -38,6 +38,7 @@ describe('OpenRouterProvider', () => {
       messages: [{ role: 'user', content: 'hi' }],
       model: 'anthropic/claude-opus-4-7',
     });
+
     expect(result.text).toBe('{"echo":"ok"}');
     expect(result.usage?.cached_tokens).toBe(80);
   });
@@ -52,6 +53,7 @@ describe('OpenRouterProvider', () => {
         });
       }),
     );
+
     await provider.complete({
       system: 'sys',
       messages: [
@@ -62,6 +64,7 @@ describe('OpenRouterProvider', () => {
       model: 'anthropic/claude-opus-4-7',
       cacheBreakpoints: [0, 1],
     });
+
     const body = captured as {
       messages: Array<{ role: string; content: string | Array<{ cache_control?: object }> }>;
     };
@@ -88,12 +91,14 @@ describe('OpenRouterProvider', () => {
         return HttpResponse.json({ choices: [{ message: { content: '{}' } }] });
       }),
     );
+
     await provider.complete({
       system: 'sys',
       messages: [{ role: 'user', content: 'x' }],
       model: 'm',
       json: true,
     });
+
     expect((captured as { response_format?: object }).response_format).toEqual({
       type: 'json_object',
     });
@@ -105,6 +110,7 @@ describe('OpenRouterProvider', () => {
         HttpResponse.json({ error: 'bad model' }, { status: 400 }),
       ),
     );
+
     await expect(
       provider.complete({
         system: 's',
@@ -116,6 +122,7 @@ describe('OpenRouterProvider', () => {
 
   it('health() returns true for a reachable models endpoint', async () => {
     const ok = await provider.health();
+
     expect(ok).toBe(true);
   });
 });
