@@ -33,7 +33,9 @@ describe('LinkedInApiPublisher.publish', () => {
         });
       }),
     );
+
     const r = await publisher.publish({ body: 'Hello world' });
+
     expect(r.urn).toBe(POST_URN);
     const body = capturedBody as Record<string, unknown>;
     expect(body.author).toBe(PERSON_URN);
@@ -52,7 +54,9 @@ describe('LinkedInApiPublisher.publish', () => {
         });
       }),
     );
+
     await publisher.publish({ body: 'Hello', link: 'https://example.com/x' });
+
     const body = capturedBody as { commentary: string };
     expect(body.commentary).toBe('Hello\n\nhttps://example.com/x');
   });
@@ -95,6 +99,7 @@ describe('LinkedInApiPublisher.publish', () => {
       body: 'with image',
       image: { bytes: Buffer.from('fake-png').toString('base64'), mime: 'image/png', alt: 'demo' },
     });
+
     expect(r.urn).toBe(POST_URN);
     expect(calls).toEqual(['init', 'put', 'post']);
   });
@@ -105,6 +110,7 @@ describe('LinkedInApiPublisher.publish', () => {
         HttpResponse.json({ message: 'unauthorized' }, { status: 401 }),
       ),
     );
+
     await expect(publisher.publish({ body: 'x' })).rejects.toBeInstanceOf(PublisherAuthError);
   });
 
@@ -114,6 +120,7 @@ describe('LinkedInApiPublisher.publish', () => {
         HttpResponse.json({ message: 'rate limit' }, { status: 429 }),
       ),
     );
+
     await expect(publisher.publish({ body: 'x' })).rejects.toBeInstanceOf(
       PublisherRateLimitError,
     );
@@ -130,7 +137,9 @@ describe('LinkedInApiPublisher.publish', () => {
         },
       ),
     );
+
     await publisher.addComment(POST_URN, 'first comment with link https://example.com');
+
     expect(captured).not.toBeNull();
     expect((captured as unknown as { body: { actor: string } }).body.actor).toBe(PERSON_URN);
   });
@@ -170,6 +179,7 @@ describe('LinkedInApiPublisher.publish', () => {
         });
       }),
     );
+
     const r = await publisher.publish({
       body: 'Article commentary',
       article: {
@@ -182,6 +192,7 @@ describe('LinkedInApiPublisher.publish', () => {
         },
       },
     });
+
     expect(r.urn).toBe(POST_URN);
     expect(calls).toEqual(['init', 'put', 'post']);
   });
@@ -197,10 +208,12 @@ describe('LinkedInApiPublisher.publish', () => {
         });
       }),
     );
+
     await publisher.publish({
       body: 'Article without thumb',
       article: { source: 'https://politico.eu/x', title: 'Headline' },
     });
+
     const body = capturedBody as { content?: { article?: { thumbnail?: string } } };
     expect(body.content?.article?.thumbnail).toBeUndefined();
   });
@@ -216,12 +229,14 @@ describe('LinkedInApiPublisher.publish', () => {
         });
       }),
     );
+
     await publisher.publish({
       body: 'Body',
       article: { source: 'https://example.com/a', title: 'T' },
       image: { bytes: 'aGk=', mime: 'image/png' },
       link: 'https://example.com/other',
     });
+
     const body = capturedBody as { commentary: string; content?: { article?: object; media?: object } };
     expect(body.content?.article).toBeDefined();
     expect(body.content?.media).toBeUndefined();
@@ -234,7 +249,9 @@ describe('LinkedInApiPublisher.publish', () => {
         HttpResponse.json({ sub: 'abc123' }),
       ),
     );
+
     const r = await publisher.healthCheck();
+
     expect(r.ok).toBe(true);
   });
 
@@ -244,7 +261,9 @@ describe('LinkedInApiPublisher.publish', () => {
         HttpResponse.json({}, { status: 401 }),
       ),
     );
+
     const r = await publisher.healthCheck();
+
     expect(r.ok).toBe(false);
     expect(r.reason).toContain('401');
   });

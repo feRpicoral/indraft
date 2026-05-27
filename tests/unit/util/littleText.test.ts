@@ -3,41 +3,51 @@ import { escapeLittleTextFormat, hashtagTemplate } from '@/lib/util/littleText';
 
 describe('escapeLittleTextFormat', () => {
   it('escapes parens (the bug that caused mid-body truncation)', () => {
-    expect(escapeLittleTextFormat('load-bearing (if they vanish, am I down?).')).toBe(
-      'load-bearing \\(if they vanish, am I down?\\)\\.'.replace('\\.', '.'),
-    );
+    const out = escapeLittleTextFormat('load-bearing (if they vanish, am I down?).');
+
+    expect(out).toBe('load-bearing \\(if they vanish, am I down?\\)\\.'.replace('\\.', '.'));
   });
 
   it('escapes every reserved character', () => {
     const input = `\\ | { } @ [ ] ( ) < > # * _ ~`;
+
     const out = escapeLittleTextFormat(input);
+
     // Each reserved char gets a leading backslash.
     expect(out).toBe('\\\\ \\| \\{ \\} \\@ \\[ \\] \\( \\) \\< \\> \\# \\* \\_ \\~');
   });
 
   it('leaves non-reserved punctuation alone', () => {
-    expect(escapeLittleTextFormat(`Hello! "world" - it's fine, isn't it?`)).toBe(
-      `Hello! "world" - it's fine, isn't it?`,
-    );
+    const out = escapeLittleTextFormat(`Hello! "world" - it's fine, isn't it?`);
+
+    expect(out).toBe(`Hello! "world" - it's fine, isn't it?`);
   });
 
   it('escapes backslash first so we never double-escape', () => {
-    expect(escapeLittleTextFormat('a\\b')).toBe('a\\\\b');
+    const out = escapeLittleTextFormat('a\\b');
+
+    expect(out).toBe('a\\\\b');
   });
 
   it('handles multi-line input with reserved chars throughout', () => {
     const body = `A paragraph.\n\n- bullet one (with parens)\n- bullet two`;
-    expect(escapeLittleTextFormat(body)).toBe(
-      `A paragraph.\n\n- bullet one \\(with parens\\)\n- bullet two`,
-    );
+
+    const out = escapeLittleTextFormat(body);
+
+    expect(out).toBe(`A paragraph.\n\n- bullet one \\(with parens\\)\n- bullet two`);
   });
 });
 
 describe('hashtagTemplate', () => {
   it('produces the explicit HashtagTemplate form', () => {
-    expect(hashtagTemplate('fullstack')).toBe('{hashtag|\\#|fullstack}');
+    const out = hashtagTemplate('fullstack');
+
+    expect(out).toBe('{hashtag|\\#|fullstack}');
   });
+
   it('strips a leading # before formatting', () => {
-    expect(hashtagTemplate('#typescript')).toBe('{hashtag|\\#|typescript}');
+    const out = hashtagTemplate('#typescript');
+
+    expect(out).toBe('{hashtag|\\#|typescript}');
   });
 });

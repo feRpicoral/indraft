@@ -115,16 +115,17 @@ describe('dry-run end to end', () => {
 
     try {
       const { runScheduledJob } = await import('@/lib/scheduler/runScheduledJob');
+
       const r = await runScheduledJob({
         dryRun: true,
         now: Date.parse('2026-05-25T00:30:00Z'),
       });
+      const pending = await listPending();
+
       expect(r.created).toBeDefined();
       expect(r.created?.status).toBe('PENDING_REVIEW');
-      const pending = await listPending();
       expect(pending).toHaveLength(1);
       expect(pending[0]?.id).toBe(r.created?.id);
-
       // dryRun=true means the notifier is not called, so we should NOT see the
       // "InDraft — draft ready" log from ConsoleNotifier.
       expect(logs.some((l) => l.includes('InDraft — draft ready'))).toBe(false);
@@ -141,10 +142,12 @@ describe('dry-run end to end', () => {
 
     try {
       const { runScheduledJob } = await import('@/lib/scheduler/runScheduledJob');
+
       const r = await runScheduledJob({
         dryRun: false,
         now: Date.parse('2026-05-25T00:30:00Z'),
       });
+
       expect(r.created).toBeDefined();
       const draftReadyLog = logs.find((l) => l.includes('InDraft — draft ready'));
       expect(draftReadyLog).toBeDefined();

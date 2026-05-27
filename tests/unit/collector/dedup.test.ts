@@ -4,33 +4,55 @@ import type { SourceItem } from '@/lib/types';
 
 describe('canonicalUrl', () => {
   it('lowercases host', () => {
-    expect(canonicalUrl('https://Example.COM/path')).toBe('https://example.com/path');
+    const result = canonicalUrl('https://Example.COM/path');
+
+    expect(result).toBe('https://example.com/path');
   });
+
   it('strips utm tracking', () => {
-    expect(
-      canonicalUrl('https://example.com/x?utm_source=twitter&utm_campaign=launch&id=42'),
-    ).toBe('https://example.com/x?id=42');
-  });
-  it('strips fbclid and gclid', () => {
-    expect(canonicalUrl('https://example.com/x?fbclid=abc&gclid=def&id=1')).toBe(
-      'https://example.com/x?id=1',
+    const result = canonicalUrl(
+      'https://example.com/x?utm_source=twitter&utm_campaign=launch&id=42',
     );
+
+    expect(result).toBe('https://example.com/x?id=42');
   });
+
+  it('strips fbclid and gclid', () => {
+    const result = canonicalUrl('https://example.com/x?fbclid=abc&gclid=def&id=1');
+
+    expect(result).toBe('https://example.com/x?id=1');
+  });
+
   it('strips default ports', () => {
-    expect(canonicalUrl('https://example.com:443/x')).toBe('https://example.com/x');
-    expect(canonicalUrl('http://example.com:80/x')).toBe('http://example.com/x');
+    const https = canonicalUrl('https://example.com:443/x');
+    const http = canonicalUrl('http://example.com:80/x');
+
+    expect(https).toBe('https://example.com/x');
+    expect(http).toBe('http://example.com/x');
   });
+
   it('drops trailing slash from non-root paths', () => {
-    expect(canonicalUrl('https://example.com/foo/')).toBe('https://example.com/foo');
-    expect(canonicalUrl('https://example.com/')).toBe('https://example.com/');
+    const nested = canonicalUrl('https://example.com/foo/');
+    const root = canonicalUrl('https://example.com/');
+
+    expect(nested).toBe('https://example.com/foo');
+    expect(root).toBe('https://example.com/');
   });
+
   it('returns input unchanged when not parseable', () => {
-    expect(canonicalUrl('not a url')).toBe('not a url');
+    const result = canonicalUrl('not a url');
+
+    expect(result).toBe('not a url');
   });
+
   it('returns empty string for undefined / null / empty input (no throw)', () => {
-    expect(canonicalUrl(undefined)).toBe('');
-    expect(canonicalUrl(null)).toBe('');
-    expect(canonicalUrl('')).toBe('');
+    const undef = canonicalUrl(undefined);
+    const nul = canonicalUrl(null);
+    const empty = canonicalUrl('');
+
+    expect(undef).toBe('');
+    expect(nul).toBe('');
+    expect(empty).toBe('');
   });
 });
 
@@ -51,7 +73,9 @@ describe('dedup', () => {
       mk('https://example.com/x/'),
       mk('https://example.com/y'),
     ];
+
     const result = dedup(items);
+
     expect(result).toHaveLength(2);
     expect(result.map((r) => r.url).sort()).toEqual([
       'https://example.com/x',
@@ -61,7 +85,9 @@ describe('dedup', () => {
 
   it('keeps the first occurrence', () => {
     const items = [mk('https://example.com/x', 1), mk('https://example.com/x', 2)];
+
     const result = dedup(items);
+
     expect(result[0]?.published_at).toBe(1);
   });
 });

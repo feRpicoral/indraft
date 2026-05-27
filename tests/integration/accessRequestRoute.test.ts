@@ -82,7 +82,9 @@ async function seedPending(): Promise<string> {
 describe('POST /api/access/request rate limit', () => {
   it('first call succeeds and sends a link per pending draft', async () => {
     await seedPending();
+
     const r = await callPost();
+
     expect(r.status).toBe(200);
     expect(r.body.ok).toBe(true);
     expect(r.body.sent).toBe(1);
@@ -90,9 +92,11 @@ describe('POST /api/access/request rate limit', () => {
 
   it('second call within the window returns 429 with Retry-After', async () => {
     await seedPending();
+
     const r1 = await callPost();
-    expect(r1.status).toBe(200);
     const r2 = await callPost();
+
+    expect(r1.status).toBe(200);
     expect(r2.status).toBe(429);
     expect(r2.body.ok).toBe(false);
   });
@@ -101,7 +105,9 @@ describe('POST /api/access/request rate limit', () => {
     await seedPending();
     await callPost();
     await callPost();
+
     const r3 = await callPost();
+
     expect(r3.status).toBe(429);
   });
 
@@ -110,9 +116,10 @@ describe('POST /api/access/request rate limit', () => {
     // distinguish empty from full), so the next call still throttles. That's
     // the intended behavior: even an enumeration probe burns one window.
     const r1 = await callPost();
+    const r2 = await callPost();
+
     expect(r1.status).toBe(200);
     expect(r1.body.sent).toBe(0);
-    const r2 = await callPost();
     expect(r2.status).toBe(429);
   });
 });
