@@ -1,5 +1,6 @@
 import { fetchWithRetry } from './http';
 import { log } from './logger';
+import { downloadImageBytes } from './downloadImageBytes';
 
 /**
  * Fetch the OpenGraph image declared on a page. Used as a fallback when we
@@ -19,7 +20,6 @@ export interface OgImage {
   alt?: string;
 }
 
-const MAX_BYTES = 5 * 1024 * 1024; // LinkedIn's practical cap
 const HTML_TIMEOUT_MS = 8_000;
 const IMAGE_TIMEOUT_MS = 15_000;
 
@@ -106,35 +106,9 @@ function resolveUrl(base: string, candidate: string): string {
 }
 
 async function downloadImage(url: string, alt: string | undefined): Promise<OgImage | null> {
-  let res: Response;
-  try {
-    res = await fetchWithRetry(url, {
-      headers: { 'User-Agent': 'InDraft/1.0 (+https://github.com/feRpicoral/indraft)' },
-      retries: 1,
-      timeoutMs: IMAGE_TIMEOUT_MS,
-    });
-  } catch (err) {
-    log.warn('og image: download failed', { url, err: String(err) });
-    return null;
-  }
-  if (!res.ok) {
-    log.warn('og image: download non-ok', { url, status: res.status });
-    return null;
-  }
-  const contentType = (res.headers.get('content-type') ?? '').split(';')[0]?.trim().toLowerCase();
-  let mime: 'image/png' | 'image/jpeg';
-  if (contentType === 'image/png') mime = 'image/png';
-  else if (contentType === 'image/jpeg' || contentType === 'image/jpg') mime = 'image/jpeg';
-  else {
-    log.info('og image: unsupported mime', { url, contentType });
-    return null;
-  }
-  const buf = Buffer.from(await res.arrayBuffer());
-  if (buf.byteLength > MAX_BYTES) {
-    log.info('og image: too large', { url, bytes: buf.byteLength });
-    return null;
-  }
-  const result: OgImage = { bytes: buf.toString('base64'), mime };
+  const img = await downloadImageBytes(url, { timeoutMs: IMAGE_TIMEOUT_MS });
+  if (!img) return null;
+  const result: OgImage = { bytes: img.bytes, mime: img.mime };
   if (alt) result.alt = alt;
   return result;
 }
