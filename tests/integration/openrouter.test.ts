@@ -65,9 +65,7 @@ describe('OpenRouterProvider', () => {
     const body = captured as {
       messages: Array<{ role: string; content: string | Array<{ cache_control?: object }> }>;
     };
-    // System message first (no cache) + 3 user messages
     expect(body.messages.length).toBe(4);
-    // The two cacheable user messages should be arrays-of-parts with cache_control
     const m1 = body.messages[1]!.content;
     const m2 = body.messages[2]!.content;
     const m3 = body.messages[3]!.content;

@@ -50,9 +50,7 @@ export interface DraftContext {
   sources: SourceItem[];
   /** The pillars (with counts) used in recent published posts. */
   recentPillars: Pillar[];
-  /** The item the model is asked to draft about. */
   chosenItem: SourceItem;
-  /** Target pillar after rotation. */
   targetPillar: Pillar;
 }
 

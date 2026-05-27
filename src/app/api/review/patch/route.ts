@@ -83,7 +83,6 @@ export async function POST(req: Request) {
       };
     }
   }
-  // Article fields: merge into the existing article record (or create one).
   if (parsed.article) {
     const existing = current.article ?? { source: '', title: '' };
     patch.article = {

@@ -9,11 +9,6 @@ interface Props {
   max?: number;
 }
 
-/**
- * Pill-style hashtag input. Type, then Enter / Space / Comma to commit a pill.
- * Backspace on an empty input deletes the last pill. Clicking the × on a pill
- * removes it. The component stores tags without a leading "#".
- */
 export default function HashtagPills({ value, onChange, disabled, max = 10 }: Props) {
   const [draft, setDraft] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);

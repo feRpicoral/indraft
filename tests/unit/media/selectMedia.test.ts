@@ -81,7 +81,6 @@ describe('selectMedia (stock)', () => {
     expect(media?.url).toBe('https://images.pexels.com/photo-1/large.jpg');
     expect(media?.mime).toBe('image/jpeg');
     expect(media?.bytes?.length).toBeGreaterThan(0);
-    // Bytes are base64; the raw text "FAKE_IMAGE_BYTES" encoded would be:
     expect(media?.bytes).toBe(Buffer.from('FAKE_IMAGE_BYTES').toString('base64'));
   });
 

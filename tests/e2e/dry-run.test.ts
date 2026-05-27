@@ -57,7 +57,6 @@ beforeAll(() => {
   process.env.CRON_SECRET = 'cron';
   process.env.NOTIFY_TO_ADDRESS = 'me@example.com';
   process.env.NOTIFY_FROM_ADDRESS = 'noreply@example.com';
-  // No RESEND_API_KEY → ConsoleNotifier
   delete process.env.RESEND_API_KEY;
   server.listen({ onUnhandledRequest: 'bypass' });
 
@@ -106,7 +105,6 @@ afterEach(() => {
 
 describe('dry-run end to end', () => {
   it('produces a PENDING_REVIEW draft and skips email send when dryRun=true', async () => {
-    // Capture console output so we can assert the dry-run skipped the notifier.
     const logs: string[] = [];
     const origLog = console.log;
     const origInfo = console.info;
@@ -125,8 +123,6 @@ describe('dry-run end to end', () => {
       expect(pending).toHaveLength(1);
       expect(pending[0]?.id).toBe(r.created?.id);
 
-      // dryRun=true means the notifier is not called, so we should NOT see the
-      // "InDraft — draft ready" log from ConsoleNotifier.
       expect(logs.some((l) => l.includes('InDraft — draft ready'))).toBe(false);
     } finally {
       console.log = origLog;

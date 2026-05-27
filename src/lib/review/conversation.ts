@@ -47,7 +47,6 @@ export function buildEditPatch(args: EditApplyArgs): Partial<Draft> {
   if (output.link) {
     patch.link = { url: output.link, placement: output.link_placement };
   } else {
-    // User asked to drop the link
     patch.link = undefined;
   }
   // Article fields: carry the LLM-supplied source/title and preserve any
@@ -69,9 +68,8 @@ export function buildEditPatch(args: EditApplyArgs): Partial<Draft> {
     // doesn't ride along into the publish call.
     patch.article = undefined;
   }
-  // Media is attached via /api/review/upload-image; this reducer never sets
-  // bytes. But when the kind switches away from single_image we DO clear the
-  // attached image so it doesn't ship inside a non-image post.
+  // Media bytes come from /api/review/upload-image; clear stale media when the
+  // draft switches away from single_image.
   if (current.content_kind === 'single_image' && output.content_kind !== 'single_image') {
     patch.media = undefined;
   }

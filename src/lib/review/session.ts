@@ -28,7 +28,6 @@ export async function destroySession(sid: string): Promise<void> {
   await getKv().del(k.session(sid));
 }
 
-/** Render the cookie value as a Set-Cookie string (HttpOnly, Secure, SameSite=Lax). */
 export function sessionCookie(value: string, maxAgeSeconds: number): string {
   const attrs = [
     `${SESSION_COOKIE}=${value}`,
@@ -41,7 +40,6 @@ export function sessionCookie(value: string, maxAgeSeconds: number): string {
   return attrs.join('; ');
 }
 
-/** Cookie that expires immediately, used to log out. */
 export function clearSessionCookie(): string {
   return `${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
 }

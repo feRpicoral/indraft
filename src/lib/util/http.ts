@@ -33,7 +33,6 @@ export async function fetchWithRetry(url: string, opts: FetchOpts = {}): Promise
     try {
       const res = await fetch(url, { ...init, signal: controller.signal });
       clearTimeout(timer);
-      // Retry transient 5xx and 429.
       if ((res.status >= 500 || res.status === 429) && attempt < retries) {
         const wait = backoffMs(attempt);
         log.warn('http retry', { url, status: res.status, attempt, wait_ms: wait });

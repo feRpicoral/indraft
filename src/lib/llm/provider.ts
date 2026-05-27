@@ -30,7 +30,6 @@ export interface ChatMessage {
 }
 
 export interface CompletionRequest {
-  /** Plain string convenience for the system prompt. */
   system: string;
   messages: ChatMessage[];
   model: string;

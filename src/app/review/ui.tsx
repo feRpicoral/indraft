@@ -2,9 +2,6 @@
 
 import { useEffect } from 'react';
 
-/**
- * Small inline toggle switch (checkbox styled). Controlled.
- */
 export function Toggle({
   checked,
   onChange,
@@ -52,9 +49,6 @@ export function Toggle({
   );
 }
 
-/**
- * Tiny info icon with a native tooltip. Cheap and screen-reader friendly.
- */
 export function InfoIcon({ tip }: { tip: string }) {
   return (
     <span
@@ -68,9 +62,6 @@ export function InfoIcon({ tip }: { tip: string }) {
   );
 }
 
-/**
- * Confirmation modal. Backdrop click + Esc dismiss. Buttons get focus on open.
- */
 export function ConfirmModal({
   open,
   title,

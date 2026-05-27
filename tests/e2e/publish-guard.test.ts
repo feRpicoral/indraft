@@ -50,11 +50,9 @@ describe('publish-guard invariant', () => {
 
   it('PUBLISHING requires PENDING_REVIEW or PUBLISH_FAILED as the source state', async () => {
     const d = await createDraft(fresh());
-    // From DRAFTED — illegal
     await expect(
       transition(d.id, 'PUBLISHING', { publishProof: 'p' }),
     ).rejects.toBeInstanceOf(TransitionError);
-    // From DISCARDED — illegal
     await transition(d.id, 'DISCARDED');
     await expect(
       transition(d.id, 'PUBLISHING', { publishProof: 'p' }),
@@ -73,7 +71,7 @@ describe('publish-guard invariant', () => {
   it('challengeFor is sensitive to body, version, and id', () => {
     const c1 = challengeFor({ id: 'd1', version: 1, body: 'A' });
     const c2 = challengeFor({ id: 'd1', version: 1, body: 'A' });
-    expect(c1).toBe(c2); // deterministic
+    expect(c1).toBe(c2);
 
     expect(challengeFor({ id: 'd1', version: 1, body: 'A' })).not.toBe(
       challengeFor({ id: 'd1', version: 1, body: 'B' }),
@@ -91,7 +89,6 @@ describe('publish-guard invariant', () => {
     await transition(d.id, 'PENDING_REVIEW');
     const v1 = (await getDraft(d.id))!;
     const challengeAtV1 = challengeFor(v1);
-    // Simulate an edit
     await transition(d.id, 'EDITED', { patch: { body: 'Edited' } });
     const v2 = (await getDraft(d.id))!;
     expect(v2.version).toBe(2);
@@ -114,13 +111,11 @@ describe('publish-guard invariant', () => {
   it('content_kind change still requires a publishProof to enter PUBLISHING', async () => {
     const d = await createDraft({ ...fresh(), content_kind: 'text' });
     await transition(d.id, 'PENDING_REVIEW');
-    // Switch to article via an EDITED transition — version bumps, no publish gained.
     const edited = await transition(d.id, 'EDITED', {
       patch: { content_kind: 'article', article: { source: 'https://x/y', title: 'T' } },
     });
     expect(edited.content_kind).toBe('article');
     expect(edited.version).toBe(2);
-    // Without proof, publish still rejected.
     await expect(transition(d.id, 'PUBLISHING')).rejects.toBeInstanceOf(MissingPublishProofError);
   });
 
@@ -132,7 +127,6 @@ describe('publish-guard invariant', () => {
     const failed = await transition(d.id, 'PUBLISH_FAILED', { publishError: 'LinkedIn 502' });
     expect(failed.version).toBe(v);
     expect(failed.publishError).toBe('LinkedIn 502');
-    // Retry must supply a fresh proof.
     await expect(transition(d.id, 'PUBLISHING')).rejects.toBeInstanceOf(MissingPublishProofError);
     const retry = await transition(d.id, 'PUBLISHING', { publishProof: 'p2' });
     expect(retry.status).toBe('PUBLISHING');
@@ -141,12 +135,7 @@ describe('publish-guard invariant', () => {
   });
 
   it('No scheduled / auto path can publish: scheduler never calls transition(_, PUBLISHING|PUBLISHED)', async () => {
-    // The scheduler only ever transitions DRAFTED → PENDING_REVIEW (and at most
-    // creates a fresh draft). It is structurally impossible for it to call
-    // transition(_, "PUBLISHING") or "PUBLISHED" because those branches do not
-    // exist in src/lib/scheduler/runScheduledJob.ts.
-    // This test is a structural placeholder: greenlight indicates the test
-    // suite acknowledges the invariant. The assertion is grep-style on the file.
+    // Structural check: the scheduler must not call publish transitions.
     const fs = await import('node:fs');
     const src = fs.readFileSync('src/lib/scheduler/runScheduledJob.ts', 'utf8');
     expect(src).not.toMatch(/transition\([^)]*['"]PUBLISHING['"]/);

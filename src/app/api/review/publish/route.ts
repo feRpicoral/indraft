@@ -136,7 +136,6 @@ export async function POST(req: Request) {
       body: publishing.body,
       ...(publishing.hashtags.length > 0 ? { hashtags: publishing.hashtags } : {}),
       ...(articleInput ? { article: articleInput } : {}),
-      // Single-image content only when not an article post.
       ...(publishing.content_kind !== 'article' &&
       publishing.media?.bytes &&
       publishing.media.mime

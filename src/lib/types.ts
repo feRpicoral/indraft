@@ -1,10 +1,3 @@
-/**
- * Shared domain types.
- *
- * Source of truth for cross-module shapes. Keep this file dependency-free so it
- * can be imported from anywhere without pulling in heavy modules.
- */
-
 export type Pillar = string; // free-form, validated against config.content.pillars at runtime
 
 export type SourceCategory = 'dev' | 'ai_research' | 'hardware' | 'business' | 'personal';
@@ -72,7 +65,6 @@ export interface DraftArticle {
 export interface EditTurn {
   role: 'user' | 'assistant';
   content: string;
-  /** Optional image attached by the user this turn. */
   imageUrl?: string;
   /** Optional URL the user pasted; fetched server-side for fresh context. */
   pastedUrl?: string;
@@ -95,7 +87,6 @@ export interface Draft {
   version: number;
   status: DraftStatus;
   body: string;
-  /** Which kind of post this is. Drives publisher dispatch + UI affordances. */
   content_kind: ContentKind;
   /** Single image — only consulted when content_kind === 'single_image'. */
   media?: DraftMedia;
@@ -123,10 +114,8 @@ export interface Draft {
   publish_attempted_at?: number;
 }
 
-/** Output shape the generator must produce (parsed from LLM JSON). */
 export interface DraftOutput {
   body: string;
-  /** Which kind of post the model chose. */
   content_kind: ContentKind;
   /** When content_kind === 'article'. Title is required; thumbnail is fetched server-side. */
   article?: {

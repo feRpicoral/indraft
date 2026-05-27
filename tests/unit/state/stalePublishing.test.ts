@@ -46,7 +46,7 @@ describe('isStalePublishing', () => {
   it('returns false for non-PUBLISHING states regardless of timestamp', async () => {
     const d = await createDraft(fresh());
     await transition(d.id, 'PENDING_REVIEW');
-    const pending = (await transition(d.id, 'STALE')); // any non-PUBLISHING state
+    const pending = await transition(d.id, 'STALE');
     expect(
       isStalePublishing(pending, Date.now() + 10 * PUBLISHING_TIMEOUT_MS),
     ).toBe(false);

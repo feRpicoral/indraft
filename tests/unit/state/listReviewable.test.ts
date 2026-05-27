@@ -43,9 +43,7 @@ describe('listReviewable', () => {
     await transition(d.id, 'PUBLISHING', { publishProof: 'p' });
     await transition(d.id, 'PUBLISH_FAILED', { publishError: 'boom' });
 
-    // listPending no longer surfaces it…
     expect((await listPending()).map((x) => x.id)).not.toContain(d.id);
-    // …but listReviewable does.
     expect((await listReviewable()).map((x) => x.id)).toContain(d.id);
   });
 

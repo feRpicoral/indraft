@@ -55,8 +55,7 @@ export async function POST(req: Request) {
         }
       : { media: newMedia };
 
-  // Attach the image without bumping version — image upload alone shouldn't
-  // invalidate a passkey assertion already in flight.
+  // Route uploads through EDITED so the draft version reflects publishable media changes.
   const updated = await transition(draftId, 'EDITED', { patch });
   return NextResponse.json({ ok: true, draft: updated });
 }

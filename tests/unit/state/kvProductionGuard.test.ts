@@ -34,7 +34,6 @@ describe('selectBackend production guard', () => {
   });
 
   it('falls back to memory in preview deploys (VERCEL_ENV=preview, no creds)', async () => {
-    // Preview deploys do not need durable KV — local-style behavior is fine.
     vi.stubEnv('INDRAFT_FORCE_MEMORY_KV', '');
     vi.stubEnv('KV_REST_API_URL', '');
     vi.stubEnv('KV_REST_API_TOKEN', '');

@@ -121,12 +121,10 @@ describe('pressReleaseCadence rule', () => {
 
 describe('skipRanges', () => {
   it('blanks out verbatim text from rule evaluation', () => {
-    // Body containing 6 em-dashes — would fail without skip
     const body = 'A — B — C — D — E — F — G';
     const all = lint(body, cfg);
     expect(ruleNames(all.failures)).toContain('emDash');
 
-    // Skipping the whole body removes the failure.
     const skipped = lint(body, cfg, [[0, body.length]]);
     expect(ruleNames(skipped.failures)).not.toContain('emDash');
   });

@@ -41,7 +41,7 @@ export function dedup(items: SourceItem[]): SourceItem[] {
   const out: SourceItem[] = [];
   for (const it of items) {
     const key = canonicalUrl(it.url);
-    if (!key) continue; // drop items without a usable url
+    if (!key) continue;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push({ ...it, url: key });
