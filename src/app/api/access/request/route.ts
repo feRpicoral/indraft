@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { listPending } from '@/lib/state/drafts';
+import { listReviewable } from '@/lib/state/drafts';
 import { issueMagicNonce } from '@/lib/state/tokens';
 import { signMagicLink } from '@/lib/review/magicLink';
 import { newNonce } from '@/lib/util/id';
@@ -13,16 +13,23 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 /**
- * Public endpoint: emails fresh magic links for all currently-pending drafts
- * to the configured NOTIFY_TO_ADDRESS. The address is environment-pinned, so
- * an attacker can only spam the owner — but they could still burn email
- * quota and churn out valid magic links. A global single-slot lock with TTL
- * limits this to at most one batch per RATE_LIMIT_WINDOW_SEC.
+ * Public endpoint: emails fresh magic links for everything the owner still
+ * needs to act on — PENDING_REVIEW (normal queue) plus PUBLISH_FAILED (a
+ * previous attempt rejected by LinkedIn, awaiting retry). The email
+ * recipient is environment-pinned, so abuse can only spam the owner, but
+ * abuse can still burn email quota and churn out valid magic links — a
+ * global single-slot lock with TTL caps it at one batch per
+ * RATE_LIMIT_WINDOW_SEC.
  *
  * The lock is global (not per-IP) on purpose: the email recipient is the
  * same regardless of caller, so a global cap bounds the damage even if the
- * attacker rotates IPs. Set-NX-EX is atomic on Redis; the local in-memory
+ * attacker rotates IPs. `SET NX EX` is atomic on Redis; the in-memory
  * adapter honors NX too.
+ *
+ * Surfacing PUBLISH_FAILED matters because a draft leaves the pending sorted
+ * set the moment it transitions out of PENDING_REVIEW — without that the
+ * owner would lose the ability to retry once their original review session
+ * cookie expired.
  */
 const RATE_LIMIT_WINDOW_SEC = 60;
 
@@ -41,10 +48,10 @@ export async function POST() {
     }
     const env = loadEnv();
     const cfg = loadConfig();
-    const pending = await listPending();
+    const reviewable = await listReviewable();
     const ttlSec = cfg.review.link_ttl_hours * 3600;
     const rows = await Promise.all(
-      pending.map(async (d) => {
+      reviewable.map(async (d) => {
         const nonce = newNonce();
         await issueMagicNonce({ nonce, draft_id: d.id, ttlSeconds: ttlSec });
         const token = signMagicLink({
