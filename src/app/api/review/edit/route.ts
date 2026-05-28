@@ -62,7 +62,12 @@ export async function POST(req: Request) {
       const newMedia = await resolveChatEditMedia(response.patch, cfg);
       if (newMedia) patch.media = newMedia;
     }
-    const updated = await transition(current.id, 'EDITED', { patch });
+    const summary =
+      response.intent === 'edit' ? `LLM edit: ${response.message}` : `LLM reply: ${response.message}`;
+    const updated = await transition(current.id, 'EDITED', {
+      patch,
+      snapshotMeta: { actor: 'llm', summary },
+    });
     return NextResponse.json({ draft: updated });
   } catch (err) {
     log.error('edit failed', { err: String(err) });

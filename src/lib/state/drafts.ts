@@ -1,7 +1,8 @@
-import type { Draft, DraftStatus } from '../types';
+import type { Draft, DraftStatus, SnapshotActor } from '../types';
 import { newId } from '../util/id';
 import { getKv } from './kv';
 import { k } from './keys';
+import { appendSnapshot } from './snapshots';
 
 /**
  * Allowed state-machine transitions. Anything not listed is rejected by
@@ -37,6 +38,10 @@ export class MissingPublishProofError extends Error {
 
 export class MissingPublishedUrnError extends Error {
   override name = 'MissingPublishedUrnError';
+}
+
+export class MissingSnapshotMetaError extends Error {
+  override name = 'MissingSnapshotMetaError';
 }
 
 export type CreateDraftInput = Omit<
@@ -125,6 +130,12 @@ interface TransitionOpts {
   publishProof?: string;
   publishedUrn?: string;
   publishError?: string;
+  /**
+   * Required when transitioning to EDITED. Captures the actor + a one-liner
+   * describing the change, so the pre-edit state can be saved to the draft's
+   * snapshot list before the patch is applied.
+   */
+  snapshotMeta?: { actor: SnapshotActor; summary: string };
 }
 
 /**
@@ -159,10 +170,23 @@ export async function transition(
       `PUBLISHED requires the LinkedIn URN returned by the publisher`,
     );
   }
+  if (to === 'EDITED' && !opts.snapshotMeta) {
+    throw new MissingSnapshotMetaError(
+      `EDITED requires snapshotMeta so the pre-edit state is captured for restore`,
+    );
+  }
 
   const now = Date.now();
   const isEdited = to === 'EDITED';
   const newVersion = isEdited ? current.version + 1 : current.version;
+
+  if (isEdited && opts.snapshotMeta) {
+    await appendSnapshot({
+      draft: current,
+      actor: opts.snapshotMeta.actor,
+      summary: opts.snapshotMeta.summary,
+    });
+  }
 
   const next: Draft = {
     ...current,

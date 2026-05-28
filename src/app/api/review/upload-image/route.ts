@@ -55,7 +55,10 @@ export async function POST(req: Request) {
         }
       : { media: newMedia };
 
-  // Route uploads through EDITED so the draft version reflects publishable media changes.
-  const updated = await transition(draftId, 'EDITED', { patch });
+  const summary = slot === 'thumbnail' ? 'Manual edit: replaced thumbnail' : 'Manual edit: replaced image';
+  const updated = await transition(draftId, 'EDITED', {
+    patch,
+    snapshotMeta: { actor: 'user', summary },
+  });
   return NextResponse.json({ ok: true, draft: updated });
 }

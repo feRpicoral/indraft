@@ -144,11 +144,64 @@ export async function POST(req: Request) {
     return NextResponse.json({ draft: current });
   }
 
+  const summary = summarizePatch(current, patch);
+
   try {
-    const updated = await transition(current.id, 'EDITED', { patch });
+    const updated = await transition(current.id, 'EDITED', {
+      patch,
+      snapshotMeta: { actor: 'user', summary },
+    });
     return NextResponse.json({ draft: updated });
   } catch (err) {
     log.error('patch failed', { err: String(err) });
     return NextResponse.json({ error: 'patch failed' }, { status: 500 });
   }
+}
+
+/**
+ * Rule-based one-liner describing what a manual patch changed. Used as the
+ * snapshot summary so the history panel reads like a Google Docs revision
+ * list. Keep it short; the panel truncates long entries anyway.
+ */
+function summarizePatch(before: Draft, patch: Partial<Draft>): string {
+  const parts: string[] = [];
+  if (patch.body !== undefined && patch.body !== before.body) parts.push('edited body');
+  if (
+    patch.hashtags !== undefined &&
+    !arraysEqual(patch.hashtags, before.hashtags)
+  ) {
+    parts.push('changed tags');
+  }
+  if (patch.pillar !== undefined && patch.pillar !== before.pillar) parts.push('changed pillar');
+  if (patch.content_kind !== undefined && patch.content_kind !== before.content_kind) {
+    parts.push(`switched to ${patch.content_kind}`);
+  }
+  if ('media' in patch) {
+    if (patch.media === undefined && before.media) parts.push('removed image');
+    else if (patch.media && !before.media) parts.push('added image');
+    else if (patch.media && before.media) parts.push('replaced image');
+  }
+  if ('link' in patch) {
+    if (patch.link === undefined && before.link) parts.push('removed link');
+    else if (patch.link && !before.link) parts.push('added link');
+    else if (patch.link && before.link) parts.push('changed link');
+  }
+  if (patch.article !== undefined) {
+    const beforeArticle = before.article;
+    const afterArticle = patch.article;
+    if (!beforeArticle && afterArticle) parts.push('added article');
+    else if (beforeArticle && !afterArticle) parts.push('removed article');
+    else if (beforeArticle && afterArticle) {
+      const sourceChanged = beforeArticle.source !== afterArticle.source;
+      const titleChanged = beforeArticle.title !== afterArticle.title;
+      const thumbChanged = !!beforeArticle.thumbnail !== !!afterArticle.thumbnail;
+      if (sourceChanged || titleChanged || thumbChanged) parts.push('edited article');
+    }
+  }
+  return parts.length > 0 ? `Manual edit: ${parts.join(', ')}` : 'Manual edit';
+}
+
+function arraysEqual<T>(a: T[], b: T[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((v, i) => v === b[i]);
 }

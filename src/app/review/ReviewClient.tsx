@@ -7,6 +7,7 @@ import PreviewPane from './PreviewPane';
 import ChatPane from './ChatPane';
 import PublishButton from './PublishButton';
 import RawEditPanel from './RawEditPanel';
+import HistoryPanel from './HistoryPanel';
 import { Toggle, ConfirmModal } from './ui';
 
 interface Props {
@@ -25,6 +26,7 @@ export default function ReviewClient({ initialDraft, pillars, stale }: Props) {
   const [done, setDone] = useState<string | null>(null);
   const [rawEdit, setRawEdit] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [pendingTurn, setPendingTurn] = useState<EditTurn | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -119,6 +121,14 @@ export default function ReviewClient({ initialDraft, pillars, stale }: Props) {
             />
             <button
               type="button"
+              onClick={() => setShowHistory((v) => !v)}
+              className="text-sm text-zinc-700 hover:underline dark:text-zinc-200"
+              disabled={busy}
+            >
+              {showHistory ? 'Close history' : 'History'}
+            </button>
+            <button
+              type="button"
               onClick={() => setConfirmDiscard(true)}
               className="text-sm text-red-600 hover:underline"
               disabled={busy}
@@ -156,6 +166,15 @@ export default function ReviewClient({ initialDraft, pillars, stale }: Props) {
             pendingTurn={pendingTurn}
           />
         </div>
+        {showHistory && (
+          <div className="mt-4">
+            <HistoryPanel
+              draft={draft}
+              onRestored={(d) => setDraft(d)}
+              onClose={() => setShowHistory(false)}
+            />
+          </div>
+        )}
       </div>
 
       <ConfirmModal

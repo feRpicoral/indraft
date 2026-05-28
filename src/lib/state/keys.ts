@@ -8,6 +8,7 @@ export const k = {
   draft: (id: string) => `draft:${id}`,
   draftIndexPending: () => `draft:index:pending`,
   draftIndexByStatus: (s: DraftStatus) => `draft:index:by-status:${s}`,
+  draftSnapshots: (id: string) => `draft:${id}:snapshots`,
 
   historyPosts: () => `history:posts`,
   historyPillarLast: () => `history:pillar:last`,

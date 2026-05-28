@@ -152,3 +152,33 @@ export interface HistoryEntry {
   urn: string;
   published_at: number;
 }
+
+/**
+ * Restorable point in a draft's edit timeline. Captured immediately BEFORE
+ * each EDITED transition so "restore version N" means "go back to the state
+ * that existed at version N, before whatever change shipped next."
+ */
+export type SnapshotActor = 'user' | 'llm' | 'system';
+
+export interface DraftSnapshotFields {
+  body: string;
+  content_kind: ContentKind;
+  hashtags: string[];
+  mentions: string[];
+  pillar: Pillar;
+  source_url: string;
+  link?: DraftLink;
+  article?: DraftArticle;
+  media?: DraftMedia;
+  verbatim_ranges?: Array<[number, number]>;
+}
+
+export interface DraftSnapshot {
+  /** Version of the draft AT THE MOMENT OF THE SNAPSHOT (i.e., pre-change). */
+  version: number;
+  ts: number;
+  actor: SnapshotActor;
+  /** Human-readable description of the change that came AFTER this snapshot. */
+  summary: string;
+  fields: DraftSnapshotFields;
+}
