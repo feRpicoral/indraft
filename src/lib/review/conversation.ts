@@ -1,37 +1,45 @@
 import type { Config } from '../config/schema';
-import type { Draft, DraftArticle, DraftMedia, DraftOutput, EditTurn } from '../types';
+import type { Draft, DraftArticle, DraftMedia, DraftOutput, EditResponse, EditTurn } from '../types';
 import { selectMedia } from '../media';
 
 /**
- * Pure reducer for one edit turn. Given the current draft, the user's
- * message, the generator's output, and the optional attachments — produce
- * the patch object the state-machine transition() call needs.
+ * Pure reducer for one chat turn. Always appends user + assistant turns to
+ * `conversation`; only mutates the draft's content fields when the LLM
+ * returned `intent: "edit"`.
  *
  * This function does NOT touch KV. It returns a deterministic patch that
  * can be unit-tested without any external state.
  */
-export interface EditApplyArgs {
+export interface ApplyEditArgs {
   current: Draft;
   userMessage: string;
-  output: DraftOutput;
+  response: EditResponse;
   imageUrl?: string;
   pastedUrl?: string;
 }
 
-export function buildEditPatch(args: EditApplyArgs): Partial<Draft> {
-  const { current, output } = args;
+export function applyEditResponse(args: ApplyEditArgs): Partial<Draft> {
+  const { current, response } = args;
+  const now = Date.now();
   const userTurn: EditTurn = {
     role: 'user',
     content: args.userMessage,
     ...(args.imageUrl !== undefined ? { imageUrl: args.imageUrl } : {}),
     ...(args.pastedUrl !== undefined ? { pastedUrl: args.pastedUrl } : {}),
-    ts: Date.now(),
+    ts: now,
   };
   const assistantTurn: EditTurn = {
     role: 'assistant',
-    content: output.body,
-    ts: Date.now(),
+    content: response.message,
+    ts: now,
   };
+  const conversation = [...current.conversation, userTurn, assistantTurn];
+
+  if (response.intent === 'reply') {
+    return { conversation };
+  }
+
+  const { patch: output } = response;
   const patch: Partial<Draft> = {
     body: output.body,
     content_kind: output.content_kind,
@@ -39,7 +47,7 @@ export function buildEditPatch(args: EditApplyArgs): Partial<Draft> {
     mentions: output.mentions,
     pillar: output.pillar,
     source_url: output.source_url,
-    conversation: [...current.conversation, userTurn, assistantTurn],
+    conversation,
   };
   if (output.verbatim_ranges !== undefined) {
     patch.verbatim_ranges = output.verbatim_ranges;
@@ -49,9 +57,6 @@ export function buildEditPatch(args: EditApplyArgs): Partial<Draft> {
   } else {
     patch.link = undefined;
   }
-  // Article fields: carry the LLM-supplied source/title and preserve any
-  // thumbnail the user already uploaded (the model never produces thumbnail
-  // bytes — those come from /api/review/upload-image with slot=thumbnail).
   if (output.content_kind === 'article') {
     if (output.article) {
       const next: DraftArticle = {
@@ -64,12 +69,8 @@ export function buildEditPatch(args: EditApplyArgs): Partial<Draft> {
       patch.article = current.article;
     }
   } else if (current.content_kind === 'article') {
-    // Switching away from article — drop the now-irrelevant card record so it
-    // doesn't ride along into the publish call.
     patch.article = undefined;
   }
-  // Media bytes come from /api/review/upload-image; clear stale media when the
-  // draft switches away from single_image.
   if (current.content_kind === 'single_image' && output.content_kind !== 'single_image') {
     patch.media = undefined;
   }

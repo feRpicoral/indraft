@@ -10,7 +10,7 @@ export {
   sessionCookie,
   clearSessionCookie,
 } from './session';
-export { buildEditPatch } from './conversation';
+export { applyEditResponse } from './conversation';
 export { isStale, hoursSinceUpdate } from './staleness';
 
 /**

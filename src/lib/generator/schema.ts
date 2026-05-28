@@ -35,3 +35,21 @@ export const DraftOutputSchema = z
       });
     }
   });
+
+/**
+ * Wrapper schema for a chat-edit turn. The LLM decides whether to apply a
+ * concrete change ("edit", carries a full `DraftOutput` patch) or just reply
+ * conversationally ("reply", no patch). `message` is always present and is
+ * what gets stored as the assistant turn in the draft's conversation history.
+ */
+export const EditResponseSchema = z.discriminatedUnion('intent', [
+  z.object({
+    intent: z.literal('reply'),
+    message: z.string().min(1).max(2000),
+  }),
+  z.object({
+    intent: z.literal('edit'),
+    message: z.string().min(1).max(500),
+    patch: DraftOutputSchema,
+  }),
+]);
