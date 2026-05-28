@@ -94,6 +94,21 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
     articleTitle !== (draft.article?.title ?? '') ||
     pendingImage.mode !== 'unchanged';
 
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [dirty]);
+
+  function handleCancel() {
+    if (dirty && !window.confirm('Discard unsaved changes?')) return;
+    onCancel();
+  }
+
   const singleImageSrc =
     draft.media?.url ??
     (draft.media?.bytes && draft.media.mime
@@ -438,7 +453,7 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
       <div className="mt-4 flex items-center justify-end gap-2">
         <button
           type="button"
-          onClick={onCancel}
+          onClick={handleCancel}
           disabled={inputsDisabled}
           className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
         >
