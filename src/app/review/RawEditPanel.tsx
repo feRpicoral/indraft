@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { ContentKind, Draft, LinkPlacement } from '@/lib/types';
+import type { ContentKind, Draft, DraftMedia, LinkPlacement } from '@/lib/types';
 import HashtagPills from './HashtagPills';
 import { InfoIcon } from './ui';
 
@@ -20,7 +20,8 @@ interface PatchPayload {
   link_url?: string | null;
   link_placement?: LinkPlacement;
   content_kind?: ContentKind;
-  article?: { source?: string; title?: string };
+  media?: DraftMedia;
+  article?: { source?: string; title?: string; thumbnail?: DraftMedia };
   remove_thumbnail?: boolean;
   remove_media?: boolean;
 }
@@ -34,6 +35,21 @@ const PENDING_UNCHANGED: PendingImage = { mode: 'unchanged' };
 
 const normalize = (tags: string[]): string[] =>
   tags.map((t) => t.replace(/^#+/, '').toLowerCase());
+
+async function fileToOwnerMedia(file: File): Promise<DraftMedia> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      if (typeof reader.result === 'string') resolve(reader.result);
+      else reject(new Error('failed to read image'));
+    });
+    reader.addEventListener('error', () => reject(reader.error ?? new Error('failed to read image')));
+    reader.readAsDataURL(file);
+  });
+  const comma = dataUrl.indexOf(',');
+  if (comma === -1) throw new Error('failed to read image');
+  return { kind: 'owner', bytes: dataUrl.slice(comma + 1), mime: file.type, alt: '' };
+}
 
 function tagsEqual(a: string[], b: string[]): boolean {
   if (a.length !== b.length) return false;
@@ -119,9 +135,6 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
 
   function changeContentKind(next: ContentKind) {
     setContentKind(next);
-    // The pending image is tied to the current slot (media vs thumbnail).
-    // Switching kinds invalidates it, and the server also clears the other
-    // slot's media on save, so reset rather than carry stale state.
     setPendingImage(PENDING_UNCHANGED);
   }
 
@@ -129,22 +142,8 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
     setBusy(true);
     setErr(null);
     try {
-      let workingDraft = draft;
-
-      if (pendingImage.mode === 'replace') {
-        const form = new FormData();
-        form.append('draft_id', draft.id);
-        form.append('file', pendingImage.file);
-        form.append('slot', uploadSlot);
-        const res = await fetch('/api/review/upload-image', { method: 'POST', body: form });
-        if (!res.ok) {
-          const msg = await res.text();
-          throw new Error(`upload ${res.status}: ${msg}`);
-        }
-        const json = (await res.json()) as { draft?: Draft };
-        if (json.draft) workingDraft = json.draft;
-      }
-
+      const replacement =
+        pendingImage.mode === 'replace' ? await fileToOwnerMedia(pendingImage.file) : null;
       const patch: PatchPayload = { draft_id: draft.id };
       if (body !== draft.body) patch.body = body;
       if (!tagsEqual(tags, initialTags)) patch.hashtags = tags;
@@ -153,11 +152,12 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
       if (contentKind === 'article') {
         const sourceChanged = articleSource !== (draft.article?.source ?? '');
         const titleChanged = articleTitle !== (draft.article?.title ?? '');
-        if (sourceChanged || titleChanged) {
-          patch.article = {
-            ...(sourceChanged ? { source: articleSource } : {}),
-            ...(titleChanged ? { title: articleTitle } : {}),
-          };
+        const articlePatch: NonNullable<PatchPayload['article']> = {};
+        if (sourceChanged) articlePatch.source = articleSource;
+        if (titleChanged) articlePatch.title = articleTitle;
+        if (replacement && uploadSlot === 'thumbnail') articlePatch.thumbnail = replacement;
+        if (Object.keys(articlePatch).length > 0) {
+          patch.article = articlePatch;
         }
       }
       if (contentKind !== 'article') {
@@ -172,6 +172,9 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
             patch.link_placement = linkPlacement;
           }
         }
+      }
+      if (replacement && uploadSlot === 'media') {
+        patch.media = replacement;
       }
       if (pendingImage.mode === 'remove') {
         if (uploadSlot === 'thumbnail') patch.remove_thumbnail = true;
@@ -189,11 +192,13 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
           throw new Error(`patch ${res.status}: ${msg}`);
         }
         const json = (await res.json()) as { draft: Draft };
-        workingDraft = json.draft;
+        setPendingImage(PENDING_UNCHANGED);
+        onSaved(json.draft);
+        return;
       }
 
       setPendingImage(PENDING_UNCHANGED);
-      onSaved(workingDraft);
+      onSaved(draft);
     } catch (e) {
       setErr(String(e));
     } finally {
