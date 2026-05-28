@@ -1,8 +1,8 @@
 /**
- * True only on the production Vercel runtime. Mirrors the predicate in
- * src/lib/state/kv.ts: NODE_ENV alone is too coarse because Next sets it to
- * 'production' during `next build` as well, so we also check VERCEL_ENV.
- * Vercel preview and `vercel dev` count as non-production.
+ * True only on the production Vercel runtime. Vercel sets VERCEL_ENV to
+ * 'production' | 'preview' | 'development' on every deploy. NODE_ENV alone
+ * is too coarse — Next sets it to 'production' during `next build` too —
+ * so fail closed on either signal pointing at prod.
  */
 export function isProductionRuntime(): boolean {
   if (process.env.VERCEL_ENV === 'production') return true;

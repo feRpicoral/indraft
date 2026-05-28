@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { listReviewable } from '@/lib/state/drafts';
 import { issueMagicNonce } from '@/lib/state/tokens';
 import { signMagicLink } from '@/lib/review/magicLink';
-import { buildConsumeUrl } from '@/lib/review/magicLinkUrl';
 import { newNonce } from '@/lib/util/id';
 import { loadConfig, loadEnv } from '@/lib/config/loader';
 import { buildNotifier } from '@/lib/notify';
@@ -59,7 +58,7 @@ export async function POST() {
           payload: { draft_id: d.id, nonce, exp: Date.now() + ttlSec * 1000 },
           secret: env.MAGIC_LINK_SIGNING_SECRET,
         });
-        const url = buildConsumeUrl(token);
+        const url = `${env.APP_URL ?? ''}/api/review/consume?token=${token}`;
         const preview = d.body.slice(0, 100).replace(/\n/g, ' ').trim() + '…';
         return { draft_id: d.id, url, preview };
       }),

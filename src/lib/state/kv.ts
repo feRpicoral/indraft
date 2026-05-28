@@ -9,6 +9,7 @@
  */
 
 import { Redis } from '@upstash/redis';
+import { isProductionRuntime } from '../util/runtime';
 
 export interface KvAdapter {
   get<T = unknown>(key: string): Promise<T | null>;
@@ -354,21 +355,6 @@ function selectBackend(): KvAdapter {
     );
   }
   return memoryBackend;
-}
-
-function isProductionRuntime(): boolean {
-  // Vercel sets VERCEL_ENV to 'production' | 'preview' | 'development' on
-  // every deploy. NODE_ENV alone is too coarse (Next sets it to 'production'
-  // in `next build` too). Fail closed on either signal pointing at prod.
-  if (process.env.VERCEL_ENV === 'production') return true;
-  if (
-    process.env.NODE_ENV === 'production' &&
-    process.env.VERCEL_ENV !== 'preview' &&
-    process.env.VERCEL_ENV !== 'development'
-  ) {
-    return true;
-  }
-  return false;
 }
 
 let _kv: KvAdapter | null = null;
