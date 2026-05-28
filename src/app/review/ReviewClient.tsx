@@ -71,10 +71,6 @@ export default function ReviewClient({ initialDraft, pillars, stale }: Props) {
         setPendingTurn(null);
       }
     } catch (err) {
-      // Aborted: keep the optimistic turn visible so the user can re-send.
-      // Any other error: also keep the turn — the parent UI doesn't have a
-      // dedicated error surface here, and leaving the message lets the user
-      // retry without retyping.
       if (!isAbortError(err)) {
         console.error('chat edit failed', err);
       }

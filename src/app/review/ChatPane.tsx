@@ -2,22 +2,15 @@
 
 import { useState } from 'react';
 import type { Draft, EditTurn } from '@/lib/types';
+import { resolveChatSendDraft } from './chatSend';
 
 interface Props {
   draft: Draft;
   onSubmit: (message: string, imageFile?: File, pastedUrl?: string) => Promise<void>;
   onCancel: () => void;
   busy: boolean;
-  /**
-   * The user's latest submitted message, shown immediately while the LLM is
-   * thinking and kept on screen after cancellation so the user can re-send.
-   * Cleared by the parent once the server returns and `draft.conversation`
-   * is authoritative again.
-   */
   pendingTurn: EditTurn | null;
 }
-
-const URL_RE = /(https?:\/\/[^\s]+)/g;
 
 export default function ChatPane({ draft, onSubmit, onCancel, busy, pendingTurn }: Props) {
   const [message, setMessage] = useState('');
@@ -25,14 +18,14 @@ export default function ChatPane({ draft, onSubmit, onCancel, busy, pendingTurn 
   const [dragOver, setDragOver] = useState(false);
 
   const handleSend = () => {
-    if (!message.trim() || busy) return;
-    const pastedUrl = extractFirstUrl(message);
+    const sendDraft = resolveChatSendDraft(message, pendingTurn);
+    if (!sendDraft || busy) return;
     const file = imageFile ?? undefined;
-    const text = message;
     setMessage('');
     setImageFile(null);
-    void onSubmit(text, file, pastedUrl);
+    void onSubmit(sendDraft.text, file, sendDraft.pastedUrl);
   };
+  const canSend = resolveChatSendDraft(message, pendingTurn) !== null;
 
   return (
     <div className="flex h-full flex-col rounded-lg border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -99,10 +92,10 @@ export default function ChatPane({ draft, onSubmit, onCancel, busy, pendingTurn 
             <button
               type="button"
               onClick={handleSend}
-              disabled={!message.trim()}
+              disabled={!canSend}
               className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-zinc-100"
             >
-              Send
+              {pendingTurn && !message.trim() ? 'Resend' : 'Send'}
             </button>
           )}
         </div>
@@ -149,9 +142,4 @@ function Dot({ delay }: { delay: string }) {
       aria-hidden
     />
   );
-}
-
-function extractFirstUrl(s: string): string | undefined {
-  const m = s.match(URL_RE);
-  return m?.[0];
 }
