@@ -54,26 +54,24 @@ export default function PreviewPane({ draft }: { draft: Draft }) {
         )}
       </article>
       {isArticle && draft.article && <ArticleCard article={draft.article} />}
-      {!isArticle && draft.media?.url && (
-        <div className="mt-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={draft.media.url}
-            alt={draft.media.alt ?? ''}
-            className="max-h-72 rounded-md object-cover"
-          />
-        </div>
-      )}
-      {!isArticle && draft.media?.bytes && draft.media?.mime && (
-        <div className="mt-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`data:${draft.media.mime};base64,${draft.media.bytes}`}
-            alt={draft.media.alt ?? ''}
-            className="max-h-72 rounded-md object-cover"
-          />
-        </div>
-      )}
+      {!isArticle && (() => {
+        const src =
+          draft.media?.url ??
+          (draft.media?.bytes && draft.media.mime
+            ? `data:${draft.media.mime};base64,${draft.media.bytes}`
+            : null);
+        if (!src) return null;
+        return (
+          <div className="mt-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={src}
+              alt={draft.media?.alt ?? ''}
+              className="max-h-72 rounded-md object-cover"
+            />
+          </div>
+        );
+      })()}
       {draft.hashtags.length > 0 && (
         <p className="mt-3 text-sm text-blue-600 dark:text-blue-400">
           {draft.hashtags.map((h) => `#${h.replace(/^#/, '')}`).join(' ')}
