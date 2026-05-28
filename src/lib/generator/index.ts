@@ -96,7 +96,7 @@ export async function draft(deps: GeneratorDeps, args: DraftArgs): Promise<Gener
  */
 export async function edit(deps: GeneratorDeps, args: EditArgs): Promise<EditGeneratorResult> {
   const { cfg, llm } = deps;
-  const system = buildSystemPrompt(cfg);
+  const system = buildSystemPrompt(cfg, 'edit');
   const ctx: EditContext = {
     cfg,
     sources: args.sources,

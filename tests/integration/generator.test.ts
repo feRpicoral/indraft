@@ -36,8 +36,10 @@ const sourceItem: SourceItem = {
 
 class StubLLM implements LLMProvider {
   public calls = 0;
+  public requests: CompletionRequest[] = [];
   constructor(private readonly responses: string[]) {}
-  async complete(_req: CompletionRequest): Promise<CompletionResult> {
+  async complete(req: CompletionRequest): Promise<CompletionResult> {
+    this.requests.push(req);
     const idx = this.calls++;
     const text = this.responses[Math.min(idx, this.responses.length - 1)]!;
     return { text, raw: { text } };
@@ -199,6 +201,8 @@ describe('generator.edit', () => {
     if (res.response.intent !== 'edit') throw new Error('expected edit intent');
     expect(res.response.patch.body).toBeTruthy();
     expect(res.response.message).toBe('Tightened the opener.');
+    expect(llm.requests[0]?.system).toContain('chat-edit request');
+    expect(llm.requests[0]?.system).not.toContain('Schema:\n  { body');
   });
 
   it('passes verbatim_ranges when the model produces them', async () => {
