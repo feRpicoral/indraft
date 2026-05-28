@@ -17,6 +17,7 @@ import { draft as generateDraft } from '../generator';
 import { selectMedia } from '../media';
 import { buildNotifier } from '../notify';
 import { signMagicLink } from '../review/magicLink';
+import { buildConsumeUrl } from '../review/magicLinkUrl';
 import { newNonce } from '../util/id';
 import { log } from '../util/logger';
 import { localDayAndHour, ONE_DAY_MS } from '../util/time';
@@ -136,7 +137,7 @@ export async function runScheduledJob(opts: RunOpts = {}): Promise<RunResult> {
         payload: { draft_id: pending.id, nonce, exp: now + ttlSec * 1000 },
         secret: env.MAGIC_LINK_SIGNING_SECRET,
       });
-      const magicUrl = `${env.APP_URL ?? 'http://localhost:3000'}/api/review/consume?token=${token}`;
+      const magicUrl = buildConsumeUrl(token);
       const notifier = buildNotifier();
       await notifier.draftReady(pending, magicUrl);
     } else {
