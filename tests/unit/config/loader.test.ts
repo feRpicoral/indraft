@@ -126,39 +126,70 @@ llm:
 });
 
 describe('loadEnv', () => {
+  const baseValid = {
+    MAGIC_LINK_SIGNING_SECRET: 'x'.repeat(40),
+    WEBAUTHN_RP_ID: 'localhost',
+    CRON_SECRET: 'cron',
+    NOTIFY_TO_ADDRESS: 'a@b.com',
+    NOTIFY_FROM_ADDRESS: 'c@d.com',
+    APP_URL: 'http://localhost:3000',
+  };
+
   it('accepts a valid env', () => {
-    const env = loadEnv({
-      MAGIC_LINK_SIGNING_SECRET: 'x'.repeat(40),
-      WEBAUTHN_RP_ID: 'localhost',
-      CRON_SECRET: 'cron',
-      NOTIFY_TO_ADDRESS: 'a@b.com',
-      NOTIFY_FROM_ADDRESS: 'c@d.com',
-    });
+    const env = loadEnv(baseValid);
 
     expect(env.WEBAUTHN_RP_ID).toBe('localhost');
   });
 
   it('rejects a short signing secret', () => {
-    const input = {
-      MAGIC_LINK_SIGNING_SECRET: 'short',
-      WEBAUTHN_RP_ID: 'localhost',
-      CRON_SECRET: 'cron',
-      NOTIFY_TO_ADDRESS: 'a@b.com',
-      NOTIFY_FROM_ADDRESS: 'c@d.com',
-    };
-
-    expect(() => loadEnv(input)).toThrow(/MAGIC_LINK_SIGNING_SECRET/);
+    expect(() =>
+      loadEnv({ ...baseValid, MAGIC_LINK_SIGNING_SECRET: 'short' }),
+    ).toThrow(/MAGIC_LINK_SIGNING_SECRET/);
   });
 
   it('rejects an invalid email address', () => {
-    const input = {
-      MAGIC_LINK_SIGNING_SECRET: 'x'.repeat(40),
-      WEBAUTHN_RP_ID: 'localhost',
-      CRON_SECRET: 'cron',
-      NOTIFY_TO_ADDRESS: 'not-an-email',
-      NOTIFY_FROM_ADDRESS: 'c@d.com',
-    };
+    expect(() =>
+      loadEnv({ ...baseValid, NOTIFY_TO_ADDRESS: 'not-an-email' }),
+    ).toThrow(/NOTIFY_TO_ADDRESS/);
+  });
 
-    expect(() => loadEnv(input)).toThrow(/NOTIFY_TO_ADDRESS/);
+  it('requires APP_URL', () => {
+    const { APP_URL: _drop, ...withoutAppUrl } = baseValid;
+    void _drop;
+
+    expect(() => loadEnv(withoutAppUrl)).toThrow(/APP_URL/);
+  });
+
+  it('rejects missing prod-required vars when VERCEL_ENV=production', () => {
+    const prev = process.env.VERCEL_ENV;
+    process.env.VERCEL_ENV = 'production';
+    try {
+      expect(() => loadEnv(baseValid)).toThrow(/required in production/);
+    } finally {
+      if (prev !== undefined) process.env.VERCEL_ENV = prev;
+      else delete process.env.VERCEL_ENV;
+    }
+  });
+
+  it('accepts a fully-populated env when VERCEL_ENV=production', () => {
+    const prev = process.env.VERCEL_ENV;
+    process.env.VERCEL_ENV = 'production';
+    try {
+      const env = loadEnv({
+        ...baseValid,
+        LINKEDIN_CLIENT_ID: 'id',
+        LINKEDIN_CLIENT_SECRET: 'secret',
+        RESEND_API_KEY: 'rk',
+        PEXELS_API_KEY: 'pk',
+        OPENROUTER_API_KEY: 'or',
+        KV_REST_API_URL: 'https://kv.example.com',
+        KV_REST_API_TOKEN: 'tok',
+      });
+
+      expect(env.RESEND_API_KEY).toBe('rk');
+    } finally {
+      if (prev !== undefined) process.env.VERCEL_ENV = prev;
+      else delete process.env.VERCEL_ENV;
+    }
   });
 });

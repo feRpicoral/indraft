@@ -136,7 +136,7 @@ export async function runScheduledJob(opts: RunOpts = {}): Promise<RunResult> {
         payload: { draft_id: pending.id, nonce, exp: now + ttlSec * 1000 },
         secret: env.MAGIC_LINK_SIGNING_SECRET,
       });
-      const magicUrl = `${env.APP_URL ?? ''}/api/review/consume?token=${token}`;
+      const magicUrl = `${env.APP_URL}/api/review/consume?token=${token}`;
       const notifier = buildNotifier();
       await notifier.draftReady(pending, magicUrl);
     } else {
@@ -166,13 +166,13 @@ async function preflightToken(
   if (!token) {
     // Still allow draft creation — owner can review without a token; only
     // publishing requires it. But we should email a reauth ping.
-    if (env.LINKEDIN_CLIENT_ID && env.APP_URL) {
+    if (env.LINKEDIN_CLIENT_ID && env.LINKEDIN_CLIENT_SECRET) {
       await notifier.reauthLinkedIn(
         0,
         buildAuthUrl(
           {
             clientId: env.LINKEDIN_CLIENT_ID,
-            clientSecret: env.LINKEDIN_CLIENT_SECRET ?? '',
+            clientSecret: env.LINKEDIN_CLIENT_SECRET,
             redirectUri: `${env.APP_URL}/api/auth/linkedin/callback`,
           },
           'preflight',
@@ -183,13 +183,13 @@ async function preflightToken(
     return { notes };
   }
   if (isExpired(token, now)) {
-    if (env.LINKEDIN_CLIENT_ID && env.APP_URL) {
+    if (env.LINKEDIN_CLIENT_ID && env.LINKEDIN_CLIENT_SECRET) {
       await notifier.reauthLinkedIn(
         0,
         buildAuthUrl(
           {
             clientId: env.LINKEDIN_CLIENT_ID,
-            clientSecret: env.LINKEDIN_CLIENT_SECRET ?? '',
+            clientSecret: env.LINKEDIN_CLIENT_SECRET,
             redirectUri: `${env.APP_URL}/api/auth/linkedin/callback`,
           },
           'preflight',
@@ -203,13 +203,13 @@ async function preflightToken(
     const lastNotified = (await getLinkedInReauthNotifiedAt()) ?? 0;
     if (now - lastNotified > ONE_DAY_MS) {
       // Dedup: at most one reauth email per day
-      if (env.LINKEDIN_CLIENT_ID && env.APP_URL) {
+      if (env.LINKEDIN_CLIENT_ID && env.LINKEDIN_CLIENT_SECRET) {
         await notifier.reauthLinkedIn(
           daysToExpiry(token, now),
           buildAuthUrl(
             {
               clientId: env.LINKEDIN_CLIENT_ID,
-              clientSecret: env.LINKEDIN_CLIENT_SECRET ?? '',
+              clientSecret: env.LINKEDIN_CLIENT_SECRET,
               redirectUri: `${env.APP_URL}/api/auth/linkedin/callback`,
             },
             'preflight',

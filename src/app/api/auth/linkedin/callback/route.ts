@@ -27,7 +27,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const redirectUri = `${env.APP_URL ?? url.origin}/api/auth/linkedin/callback`;
+    const redirectUri = `${env.APP_URL}/api/auth/linkedin/callback`;
     const result = await exchangeCode(
       {
         clientId: env.LINKEDIN_CLIENT_ID,
@@ -44,7 +44,7 @@ export async function GET(req: Request) {
       person_urn: result.person_urn,
     });
     log.info('linkedin token stored', { sub: result.sub });
-    return NextResponse.redirect(`${env.APP_URL ?? url.origin}/access`);
+    return NextResponse.redirect(`${env.APP_URL}/access`);
   } catch (err) {
     log.error('linkedin callback failed', { err: String(err) });
     return new NextResponse(`oauth failed: ${String(err)}`, { status: 500 });
