@@ -17,22 +17,30 @@ export interface FetchOpts extends RequestInit {
  * `fetch` with timeout, exponential backoff, and structured error logging.
  * Returns the Response untouched — callers parse JSON / decide what to do
  * with status codes (we don't throw on 4xx).
+ *
+ * If `opts.signal` is supplied, it is combined with the per-attempt timeout
+ * signal so the external aborter and the timeout both kill the request.
  */
 export async function fetchWithRetry(url: string, opts: FetchOpts = {}): Promise<Response> {
   const {
     timeoutMs = DEFAULT_TIMEOUT_MS,
     retries = DEFAULT_RETRIES,
     backoffMs = (attempt) => BASE_BACKOFF_MS * 2 ** attempt,
+    signal: externalSignal,
     ...init
   } = opts;
 
   let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
+    if (externalSignal?.aborted) throw externalSignal.reason ?? new HttpError('aborted', { url });
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const onExternalAbort = () => controller.abort(externalSignal!.reason);
+    externalSignal?.addEventListener('abort', onExternalAbort, { once: true });
     try {
       const res = await fetch(url, { ...init, signal: controller.signal });
       clearTimeout(timer);
+      externalSignal?.removeEventListener('abort', onExternalAbort);
       if ((res.status >= 500 || res.status === 429) && attempt < retries) {
         const wait = backoffMs(attempt);
         log.warn('http retry', { url, status: res.status, attempt, wait_ms: wait });
@@ -42,6 +50,8 @@ export async function fetchWithRetry(url: string, opts: FetchOpts = {}): Promise
       return res;
     } catch (err) {
       clearTimeout(timer);
+      externalSignal?.removeEventListener('abort', onExternalAbort);
+      if (externalSignal?.aborted) throw err;
       lastError = err;
       if (attempt < retries) {
         const wait = backoffMs(attempt);

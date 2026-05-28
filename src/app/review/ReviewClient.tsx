@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Draft } from '@/lib/types';
+import type { Draft, EditTurn } from '@/lib/types';
 import PreviewPane from './PreviewPane';
 import ChatPane from './ChatPane';
 import PublishButton from './PublishButton';
@@ -25,21 +25,36 @@ export default function ReviewClient({ initialDraft, pillars, stale }: Props) {
   const [done, setDone] = useState<string | null>(null);
   const [rawEdit, setRawEdit] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [pendingTurn, setPendingTurn] = useState<EditTurn | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   async function submitEdit(message: string, imageFile?: File, pastedUrl?: string) {
+    if (busy) return;
+    const optimisticTurn: EditTurn = {
+      role: 'user',
+      content: message,
+      ...(pastedUrl !== undefined ? { pastedUrl } : {}),
+      ts: Date.now(),
+    };
+    setPendingTurn(optimisticTurn);
     setBusy(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       if (imageFile) {
         const form = new FormData();
         form.append('draft_id', draft.id);
         form.append('file', imageFile);
-        const r = await fetch('/api/review/upload-image', { method: 'POST', body: form });
+        const r = await fetch('/api/review/upload-image', {
+          method: 'POST',
+          body: form,
+          signal: controller.signal,
+        });
         if (r.ok) {
           const j = (await r.json()) as { draft?: Draft };
           if (j.draft) setDraft(j.draft);
         }
       }
-      // Upload first so the edit endpoint can pass the stored media to the LLM.
       const editRes = await fetch('/api/review/edit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -48,14 +63,25 @@ export default function ReviewClient({ initialDraft, pillars, stale }: Props) {
           message,
           ...(pastedUrl !== undefined ? { pastedUrl } : {}),
         }),
+        signal: controller.signal,
       });
       if (editRes.ok) {
         const j = (await editRes.json()) as { draft: Draft };
         setDraft(j.draft);
+        setPendingTurn(null);
+      }
+    } catch (err) {
+      if (!isAbortError(err)) {
+        console.error('chat edit failed', err);
       }
     } finally {
       setBusy(false);
+      abortRef.current = null;
     }
+  }
+
+  function cancelEdit() {
+    abortRef.current?.abort();
   }
 
   async function doDiscard() {
@@ -122,7 +148,13 @@ export default function ReviewClient({ initialDraft, pillars, stale }: Props) {
           ) : (
             <PreviewPane draft={draft} />
           )}
-          <ChatPane draft={draft} onSubmit={submitEdit} busy={busy} />
+          <ChatPane
+            draft={draft}
+            onSubmit={submitEdit}
+            onCancel={cancelEdit}
+            busy={busy}
+            pendingTurn={pendingTurn}
+          />
         </div>
       </div>
 
@@ -137,4 +169,10 @@ export default function ReviewClient({ initialDraft, pillars, stale }: Props) {
       />
     </main>
   );
+}
+
+function isAbortError(err: unknown): boolean {
+  return (
+    err instanceof DOMException && err.name === 'AbortError'
+  ) || (typeof err === 'object' && err !== null && 'name' in err && (err as { name: string }).name === 'AbortError');
 }
