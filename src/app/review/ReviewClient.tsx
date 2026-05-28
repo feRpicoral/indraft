@@ -8,6 +8,7 @@ import ChatPane from './ChatPane';
 import PublishButton from './PublishButton';
 import RawEditPanel from './RawEditPanel';
 import HistoryPanel from './HistoryPanel';
+import SourcesPanel from './SourcesPanel';
 import { Toggle, ConfirmModal } from './ui';
 
 interface Props {
@@ -27,6 +28,7 @@ export default function ReviewClient({ initialDraft, pillars, stale }: Props) {
   const [rawEdit, setRawEdit] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showSources, setShowSources] = useState(false);
   const [pendingTurn, setPendingTurn] = useState<EditTurn | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -121,6 +123,14 @@ export default function ReviewClient({ initialDraft, pillars, stale }: Props) {
             />
             <button
               type="button"
+              onClick={() => setShowSources((v) => !v)}
+              className="text-sm text-zinc-700 hover:underline dark:text-zinc-200"
+              disabled={busy}
+            >
+              {showSources ? 'Close sources' : 'Sources'}
+            </button>
+            <button
+              type="button"
               onClick={() => setShowHistory((v) => !v)}
               className="text-sm text-zinc-700 hover:underline dark:text-zinc-200"
               disabled={busy}
@@ -166,6 +176,18 @@ export default function ReviewClient({ initialDraft, pillars, stale }: Props) {
             pendingTurn={pendingTurn}
           />
         </div>
+        {showSources && (
+          <div className="mt-4">
+            <SourcesPanel
+              draft={draft}
+              onRegenerated={(d) => {
+                setDraft(d);
+                setShowSources(false);
+              }}
+              onClose={() => setShowSources(false)}
+            />
+          </div>
+        )}
         {showHistory && (
           <div className="mt-4">
             <HistoryPanel
