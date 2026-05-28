@@ -5,6 +5,7 @@ import { renderReauthLinkedIn } from './templates/reauthLinkedIn';
 import { renderAccessLinks, type AccessLinkRow } from './templates/accessLinks';
 import type { Draft } from '../types';
 import { loadEnv } from '../config/loader';
+import { isProductionRuntime } from '../util/runtime';
 
 export interface Notifier {
   draftReady(draft: Draft, magicUrl: string): Promise<void>;
@@ -14,12 +15,15 @@ export interface Notifier {
 }
 
 /**
- * Build the configured notifier. When RESEND_API_KEY isn't set (dry-run, CI),
- * returns a dev notifier that logs to stdout instead of sending.
+ * Build the configured notifier. Outside the production runtime — local dev,
+ * Vercel preview, tests, CI — always log to stdout so the review loop is
+ * reachable without dispatching real email. Production still goes through
+ * Resend, and a missing RESEND_API_KEY in production falls back to the
+ * console notifier rather than crashing.
  */
 export function buildNotifier(): Notifier {
   const env = loadEnv();
-  if (!env.RESEND_API_KEY) {
+  if (!isProductionRuntime() || !env.RESEND_API_KEY) {
     return new ConsoleNotifier();
   }
   return new ResendNotifierBackend(

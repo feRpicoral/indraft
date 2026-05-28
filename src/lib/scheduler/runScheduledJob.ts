@@ -136,7 +136,7 @@ export async function runScheduledJob(opts: RunOpts = {}): Promise<RunResult> {
         payload: { draft_id: pending.id, nonce, exp: now + ttlSec * 1000 },
         secret: env.MAGIC_LINK_SIGNING_SECRET,
       });
-      const magicUrl = `${env.APP_URL ?? 'http://localhost:3000'}/api/review/consume?token=${token}`;
+      const magicUrl = `${env.APP_URL ?? ''}/api/review/consume?token=${token}`;
       const notifier = buildNotifier();
       await notifier.draftReady(pending, magicUrl);
     } else {
