@@ -54,7 +54,7 @@ export async function POST(req: Request) {
   const targetPillar = pickPillar(cfg.content.pillars, last, recent);
 
   try {
-    const { output } = await generateDraft(
+    const { output, linter_warnings } = await generateDraft(
       { cfg, llm },
       { sources, chosenItem: chosen, targetPillar, recentPillars: recent },
     );
@@ -74,6 +74,7 @@ export async function POST(req: Request) {
       source_url: output.source_url,
       conversation: [...current.conversation, switchTurn],
       verbatim_ranges: output.verbatim_ranges,
+      linter_warnings: linter_warnings.length > 0 ? linter_warnings : undefined,
     };
     if (output.link) patch.link = { url: output.link, placement: output.link_placement };
     else patch.link = undefined;
