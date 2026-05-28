@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import type { ContentKind, Draft, LinkPlacement } from '@/lib/types';
+import { useEffect, useRef, useState } from 'react';
+import type { ContentKind, Draft, DraftMedia, LinkPlacement } from '@/lib/types';
 import HashtagPills from './HashtagPills';
 import { InfoIcon } from './ui';
 
@@ -20,12 +20,36 @@ interface PatchPayload {
   link_url?: string | null;
   link_placement?: LinkPlacement;
   content_kind?: ContentKind;
-  article?: { source?: string; title?: string };
+  media?: DraftMedia;
+  article?: { source?: string; title?: string; thumbnail?: DraftMedia };
   remove_thumbnail?: boolean;
+  remove_media?: boolean;
 }
+
+type PendingImage =
+  | { mode: 'unchanged' }
+  | { mode: 'remove' }
+  | { mode: 'replace'; file: File; previewUrl: string };
+
+const PENDING_UNCHANGED: PendingImage = { mode: 'unchanged' };
 
 const normalize = (tags: string[]): string[] =>
   tags.map((t) => t.replace(/^#+/, '').toLowerCase());
+
+async function fileToOwnerMedia(file: File): Promise<DraftMedia> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      if (typeof reader.result === 'string') resolve(reader.result);
+      else reject(new Error('failed to read image'));
+    });
+    reader.addEventListener('error', () => reject(reader.error ?? new Error('failed to read image')));
+    reader.readAsDataURL(file);
+  });
+  const comma = dataUrl.indexOf(',');
+  if (comma === -1) throw new Error('failed to read image');
+  return { kind: 'owner', bytes: dataUrl.slice(comma + 1), mime: file.type, alt: '' };
+}
 
 function tagsEqual(a: string[], b: string[]): boolean {
   if (a.length !== b.length) return false;
@@ -45,11 +69,19 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
   const [articleSource, setArticleSource] = useState(draft.article?.source ?? '');
   const [articleTitle, setArticleTitle] = useState(draft.article?.title ?? '');
   const [busy, setBusy] = useState(false);
-  const [imageBusy, setImageBusy] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [pendingImage, setPendingImage] = useState<PendingImage>(PENDING_UNCHANGED);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadSlot = contentKind === 'article' ? 'thumbnail' : 'media';
+
+  useEffect(() => {
+    if (pendingImage.mode === 'replace') {
+      const url = pendingImage.previewUrl;
+      return () => URL.revokeObjectURL(url);
+    }
+    return undefined;
+  }, [pendingImage]);
 
   const dirty =
     body !== draft.body ||
@@ -59,7 +91,8 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
     linkPlacement !== (draft.link?.placement ?? 'none') ||
     contentKind !== draft.content_kind ||
     articleSource !== (draft.article?.source ?? '') ||
-    articleTitle !== (draft.article?.title ?? '');
+    articleTitle !== (draft.article?.title ?? '') ||
+    pendingImage.mode !== 'unchanged';
 
   const singleImageSrc =
     draft.media?.url ??
@@ -73,10 +106,15 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
       ? `data:${draft.article.thumbnail.mime};base64,${draft.article.thumbnail.bytes}`
       : null);
 
-  const mediaPreviewSrc = contentKind === 'article' ? thumbnailSrc : singleImageSrc;
+  const draftMediaSrc = contentKind === 'article' ? thumbnailSrc : singleImageSrc;
+  const mediaPreviewSrc =
+    pendingImage.mode === 'replace'
+      ? pendingImage.previewUrl
+      : pendingImage.mode === 'remove'
+        ? null
+        : draftMediaSrc;
 
-  async function uploadImage(file: File) {
-    if (imageBusy) return;
+  function queueImageReplace(file: File) {
     setErr(null);
     if (!/^image\/(png|jpeg)$/.test(file.type)) {
       setErr('Image must be PNG or JPEG.');
@@ -86,58 +124,26 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
       setErr('Image must be ≤ 1 MB.');
       return;
     }
-    setImageBusy(true);
-    try {
-      const form = new FormData();
-      form.append('draft_id', draft.id);
-      form.append('file', file);
-      form.append('slot', uploadSlot);
-      const res = await fetch('/api/review/upload-image', { method: 'POST', body: form });
-      if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(`upload ${res.status}: ${msg}`);
-      }
-      const json = (await res.json()) as { draft?: Draft };
-      if (json.draft) onSaved(json.draft);
-    } catch (e) {
-      setErr(String(e));
-    } finally {
-      setImageBusy(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+    setPendingImage({ mode: 'replace', file, previewUrl: URL.createObjectURL(file) });
+    if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
-  async function removeImage() {
-    if (imageBusy) return;
+  function queueImageRemove() {
     setErr(null);
-    setImageBusy(true);
-    try {
-      const removePayload =
-        uploadSlot === 'thumbnail'
-          ? { draft_id: draft.id, remove_thumbnail: true }
-          : { draft_id: draft.id, remove_media: true };
-      const res = await fetch('/api/review/patch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(removePayload),
-      });
-      if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(`remove ${res.status}: ${msg}`);
-      }
-      const json = (await res.json()) as { draft: Draft };
-      onSaved(json.draft);
-    } catch (e) {
-      setErr(String(e));
-    } finally {
-      setImageBusy(false);
-    }
+    setPendingImage({ mode: 'remove' });
+  }
+
+  function changeContentKind(next: ContentKind) {
+    setContentKind(next);
+    setPendingImage(PENDING_UNCHANGED);
   }
 
   async function save() {
     setBusy(true);
     setErr(null);
     try {
+      const replacement =
+        pendingImage.mode === 'replace' ? await fileToOwnerMedia(pendingImage.file) : null;
       const patch: PatchPayload = { draft_id: draft.id };
       if (body !== draft.body) patch.body = body;
       if (!tagsEqual(tags, initialTags)) patch.hashtags = tags;
@@ -146,14 +152,14 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
       if (contentKind === 'article') {
         const sourceChanged = articleSource !== (draft.article?.source ?? '');
         const titleChanged = articleTitle !== (draft.article?.title ?? '');
-        if (sourceChanged || titleChanged) {
-          patch.article = {
-            ...(sourceChanged ? { source: articleSource } : {}),
-            ...(titleChanged ? { title: articleTitle } : {}),
-          };
+        const articlePatch: NonNullable<PatchPayload['article']> = {};
+        if (sourceChanged) articlePatch.source = articleSource;
+        if (titleChanged) articlePatch.title = articleTitle;
+        if (replacement && uploadSlot === 'thumbnail') articlePatch.thumbnail = replacement;
+        if (Object.keys(articlePatch).length > 0) {
+          patch.article = articlePatch;
         }
       }
-      // Link fields are meaningless for article posts; skip diffing them.
       if (contentKind !== 'article') {
         const placementChanged = linkPlacement !== (draft.link?.placement ?? 'none');
         const urlChanged = linkUrl !== (draft.link?.url ?? '');
@@ -167,18 +173,32 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
           }
         }
       }
-
-      const res = await fetch('/api/review/patch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      });
-      if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(`patch ${res.status}: ${msg}`);
+      if (replacement && uploadSlot === 'media') {
+        patch.media = replacement;
       }
-      const json = (await res.json()) as { draft: Draft };
-      onSaved(json.draft);
+      if (pendingImage.mode === 'remove') {
+        if (uploadSlot === 'thumbnail') patch.remove_thumbnail = true;
+        else patch.remove_media = true;
+      }
+
+      if (Object.keys(patch).length > 1) {
+        const res = await fetch('/api/review/patch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        });
+        if (!res.ok) {
+          const msg = await res.text();
+          throw new Error(`patch ${res.status}: ${msg}`);
+        }
+        const json = (await res.json()) as { draft: Draft };
+        setPendingImage(PENDING_UNCHANGED);
+        onSaved(json.draft);
+        return;
+      }
+
+      setPendingImage(PENDING_UNCHANGED);
+      onSaved(draft);
     } catch (e) {
       setErr(String(e));
     } finally {
@@ -186,7 +206,7 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
     }
   }
 
-  const inputsDisabled = busy || imageBusy;
+  const inputsDisabled = busy;
 
   return (
     <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -204,7 +224,7 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
         </label>
         <select
           value={contentKind}
-          onChange={(e) => setContentKind(e.target.value as ContentKind)}
+          onChange={(e) => changeContentKind(e.target.value as ContentKind)}
           disabled={inputsDisabled}
           className="mt-1 w-full rounded-md border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
         >
@@ -272,7 +292,7 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
             {uploadSlot === 'thumbnail' ? 'Article thumbnail' : 'Image'}
             <InfoIcon tip={uploadSlot === 'thumbnail'
               ? 'Optional. If omitted, the publisher will try the article URL’s OG image at publish time. PNG or JPEG, ≤1MB.'
-              : 'Optional image attached to the post. Uploaded immediately; removing is also immediate. PNG or JPEG, ≤1MB.'} />
+              : 'Optional image attached to the post. Saved on click of Save edit; discarded on Cancel. PNG or JPEG, ≤1MB.'} />
           </span>
         </label>
         {mediaPreviewSrc ? (
@@ -290,11 +310,11 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
                 disabled={inputsDisabled}
                 className="rounded-md border border-zinc-300 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
               >
-                {imageBusy ? 'Working…' : 'Replace image'}
+                Replace image
               </button>
               <button
                 type="button"
-                onClick={removeImage}
+                onClick={queueImageRemove}
                 disabled={inputsDisabled}
                 className="rounded-md border border-red-300 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/30"
               >
@@ -313,7 +333,7 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
               e.preventDefault();
               setDragOver(false);
               const f = e.dataTransfer.files?.[0];
-              if (f) void uploadImage(f);
+              if (f) queueImageReplace(f);
             }}
             onClick={() => fileInputRef.current?.click()}
             className={
@@ -323,7 +343,7 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
                 : 'border-zinc-300 text-zinc-500 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600')
             }
           >
-            {imageBusy ? 'Uploading…' : 'Drop image here or click to choose (PNG/JPEG, ≤1MB)'}
+            Drop image here or click to choose (PNG/JPEG, ≤1MB)
           </div>
         )}
         <input
@@ -334,7 +354,7 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
           disabled={inputsDisabled}
           onChange={(e) => {
             const f = e.target.files?.[0];
-            if (f) void uploadImage(f);
+            if (f) queueImageReplace(f);
           }}
         />
       </div>

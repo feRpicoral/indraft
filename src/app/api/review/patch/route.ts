@@ -2,11 +2,30 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getDraft, transition } from '@/lib/state/drafts';
 import { requireDraftSession, SessionError } from '@/lib/review/requireSession';
+import { validateImage } from '@/lib/media/validate';
 import type { Draft } from '@/lib/types';
 import { log } from '@/lib/util/logger';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+const MAX_INLINE_IMAGE_BYTES = 1 * 1024 * 1024;
+
+const OwnerMediaSchema = z.object({
+  kind: z.literal('owner'),
+  bytes: z.string().min(1),
+  mime: z.enum(['image/png', 'image/jpeg']),
+  alt: z.string().max(500).optional(),
+});
+
+function validateInlineMedia(media: z.infer<typeof OwnerMediaSchema>): string | null {
+  const size = Buffer.byteLength(media.bytes, 'base64');
+  if (size > MAX_INLINE_IMAGE_BYTES) {
+    return `size ${size}B exceeds ${MAX_INLINE_IMAGE_BYTES}B`;
+  }
+  const meta = validateImage({ mime: media.mime, size });
+  return meta.ok ? null : (meta.reason ?? 'invalid image');
+}
 
 /**
  * Direct field-level edit for a draft. Skips the LLM entirely — the owner
@@ -24,6 +43,7 @@ const BodySchema = z.object({
   pillar: z.string().min(1).optional(),
   link_url: z.string().url().nullable().optional(),
   link_placement: z.enum(['none', 'body', 'comment']).optional(),
+  media: OwnerMediaSchema.optional(),
   /** Set to true to remove the currently attached image. */
   remove_media: z.boolean().optional(),
   /** Set to true to remove the article thumbnail. Keeps the article fields. */
@@ -35,6 +55,7 @@ const BodySchema = z.object({
     .object({
       source: z.string().url().optional(),
       title: z.string().min(1).max(400).optional(),
+      thumbnail: OwnerMediaSchema.optional(),
     })
     .optional(),
 });
@@ -57,6 +78,16 @@ export async function POST(req: Request) {
   if (current.status !== 'PENDING_REVIEW') {
     return new NextResponse('draft is not editable in its current state', { status: 409 });
   }
+  const mediaError = parsed.media ? validateInlineMedia(parsed.media) : null;
+  if (mediaError) {
+    return NextResponse.json({ error: mediaError }, { status: 415 });
+  }
+  const thumbnailError = parsed.article?.thumbnail
+    ? validateInlineMedia(parsed.article.thumbnail)
+    : null;
+  if (thumbnailError) {
+    return NextResponse.json({ error: thumbnailError }, { status: 415 });
+  }
 
   // Build the patch from only the fields the caller actually supplied. The
   // owner's verbatim edit is already exempt from the linter — we record the
@@ -72,6 +103,9 @@ export async function POST(req: Request) {
   if (parsed.pillar !== undefined) patch.pillar = parsed.pillar;
   if (parsed.remove_media) {
     patch.media = undefined;
+  }
+  if (parsed.media !== undefined) {
+    patch.media = parsed.media;
   }
   if (parsed.link_url !== undefined || parsed.link_placement !== undefined) {
     if (parsed.link_url === null || parsed.link_placement === 'none') {
@@ -89,6 +123,7 @@ export async function POST(req: Request) {
       ...existing,
       ...(parsed.article.source !== undefined ? { source: parsed.article.source } : {}),
       ...(parsed.article.title !== undefined ? { title: parsed.article.title } : {}),
+      ...(parsed.article.thumbnail !== undefined ? { thumbnail: parsed.article.thumbnail } : {}),
     };
   }
   if (parsed.remove_thumbnail) {
