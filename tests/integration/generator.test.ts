@@ -36,8 +36,10 @@ const sourceItem: SourceItem = {
 
 class StubLLM implements LLMProvider {
   public calls = 0;
+  public requests: CompletionRequest[] = [];
   constructor(private readonly responses: string[]) {}
-  async complete(_req: CompletionRequest): Promise<CompletionResult> {
+  async complete(req: CompletionRequest): Promise<CompletionResult> {
+    this.requests.push(req);
     const idx = this.calls++;
     const text = this.responses[Math.min(idx, this.responses.length - 1)]!;
     return { text, raw: { text } };
@@ -177,8 +179,14 @@ describe('generator.edit', () => {
     updated_at: 0,
   };
 
-  it('feeds the current draft + user message into the LLM and returns a new output', async () => {
-    const llm = new StubLLM([goodResponse]);
+  const goodEditResponse = JSON.stringify({
+    intent: 'edit',
+    message: 'Tightened the opener.',
+    patch: JSON.parse(goodResponse),
+  });
+
+  it('feeds the current draft + user message into the LLM and returns an edit response', async () => {
+    const llm = new StubLLM([goodEditResponse]);
 
     const res = await edit(
       { cfg, llm },
@@ -189,21 +197,30 @@ describe('generator.edit', () => {
       },
     );
 
-    expect(res.output.body).toBeTruthy();
+    expect(res.response.intent).toBe('edit');
+    if (res.response.intent !== 'edit') throw new Error('expected edit intent');
+    expect(res.response.patch.body).toBeTruthy();
+    expect(res.response.message).toBe('Tightened the opener.');
+    expect(llm.requests[0]?.system).toContain('chat-edit request');
+    expect(llm.requests[0]?.system).not.toContain('Schema:\n  { body');
   });
 
   it('passes verbatim_ranges when the model produces them', async () => {
     const verbatimResp = JSON.stringify({
-      body: 'A custom opener — that the user wrote verbatim — sits inside this updated draft, accompanied by my own commentary on the broader context.',
-      content_kind: 'text',
-      needs_image: false,
-      image_source: 'none',
-      link_placement: 'none',
-      hashtags: [],
-      mentions: [],
-      pillar: 'fullstack',
-      source_url: 'https://example.com/x',
-      verbatim_ranges: [[2, 50]],
+      intent: 'edit',
+      message: 'Used the verbatim opener you supplied.',
+      patch: {
+        body: 'A custom opener — that the user wrote verbatim — sits inside this updated draft, accompanied by my own commentary on the broader context.',
+        content_kind: 'text',
+        needs_image: false,
+        image_source: 'none',
+        link_placement: 'none',
+        hashtags: [],
+        mentions: [],
+        pillar: 'fullstack',
+        source_url: 'https://example.com/x',
+        verbatim_ranges: [[2, 50]],
+      },
     });
     const llm = new StubLLM([verbatimResp]);
 
@@ -216,6 +233,28 @@ describe('generator.edit', () => {
       },
     );
 
-    expect(res.output.verbatim_ranges).toEqual([[2, 50]]);
+    if (res.response.intent !== 'edit') throw new Error('expected edit intent');
+    expect(res.response.patch.verbatim_ranges).toEqual([[2, 50]]);
+  });
+
+  it('returns a reply turn unchanged (no patch, no body fields)', async () => {
+    const replyResp = JSON.stringify({
+      intent: 'reply',
+      message: "I'd lead with the counterpoint — pushes back harder.",
+    });
+    const llm = new StubLLM([replyResp]);
+
+    const res = await edit(
+      { cfg, llm },
+      {
+        current: currentDraft,
+        message: 'what do you think of the angle?',
+        sources: [sourceItem],
+      },
+    );
+
+    expect(res.response.intent).toBe('reply');
+    expect(res.response.message).toContain('counterpoint');
+    expect(res.linter_warnings).toEqual([]);
   });
 });

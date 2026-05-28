@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getDraft, transition } from '@/lib/state/drafts';
 import { requireDraftSession, SessionError } from '@/lib/review/requireSession';
-import { buildEditPatch, resolveChatEditMedia } from '@/lib/review/conversation';
+import { applyEditResponse, resolveChatEditMedia } from '@/lib/review/conversation';
 import { edit as generateEdit } from '@/lib/generator';
 import { buildProvider } from '@/lib/llm';
 import { loadConfig } from '@/lib/config/loader';
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
   const sources = await collect(cfg, { skipGithub: true });
 
   try {
-    const { output } = await generateEdit(
+    const { response } = await generateEdit(
       { cfg, llm },
       {
         current,
@@ -51,17 +51,15 @@ export async function POST(req: Request) {
         ...(parsed.pastedUrl !== undefined ? { pastedUrl: parsed.pastedUrl } : {}),
       },
     );
-    const patch = buildEditPatch({
+    const patch = applyEditResponse({
       current,
       userMessage: parsed.message,
-      output,
+      response,
       ...(parsed.pastedUrl !== undefined ? { pastedUrl: parsed.pastedUrl } : {}),
     });
-    // Hydrate stock/AI media when the LLM asked for one. Owner uploads still
-    // come via /api/review/upload-image — see resolveChatEditMedia.
-    const newMedia = await resolveChatEditMedia(output, cfg);
-    if (newMedia) {
-      patch.media = newMedia;
+    if (response.intent === 'edit') {
+      const newMedia = await resolveChatEditMedia(response.patch, cfg);
+      if (newMedia) patch.media = newMedia;
     }
     const updated = await transition(current.id, 'EDITED', { patch });
     return NextResponse.json({ draft: updated });

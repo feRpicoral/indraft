@@ -135,6 +135,14 @@ export interface DraftOutput {
   verbatim_ranges?: Array<[number, number]>;
 }
 
+/**
+ * What the LLM returns for a chat-edit turn. `reply` is a conversational turn
+ * with no field changes; `edit` carries a full DraftOutput patch.
+ */
+export type EditResponse =
+  | { intent: 'reply'; message: string }
+  | { intent: 'edit'; message: string; patch: DraftOutput };
+
 /** A persisted history entry. Used for dedup + pillar rotation. */
 export interface HistoryEntry {
   draft_id: string;
