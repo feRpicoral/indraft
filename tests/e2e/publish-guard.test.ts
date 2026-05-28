@@ -94,7 +94,10 @@ describe('publish-guard invariant', () => {
     const v1 = (await getDraft(d.id))!;
     const challengeAtV1 = challengeFor(v1);
 
-    await transition(d.id, 'EDITED', { patch: { body: 'Edited' } });
+    await transition(d.id, 'EDITED', {
+      patch: { body: 'Edited' },
+      snapshotMeta: { actor: 'user', summary: 'edit' },
+    });
     const v2 = (await getDraft(d.id))!;
     const challengeAtV2 = challengeFor(v2);
 
@@ -121,6 +124,7 @@ describe('publish-guard invariant', () => {
 
     const edited = await transition(d.id, 'EDITED', {
       patch: { content_kind: 'article', article: { source: 'https://x/y', title: 'T' } },
+      snapshotMeta: { actor: 'user', summary: 'switch kind' },
     });
 
     expect(edited.content_kind).toBe('article');

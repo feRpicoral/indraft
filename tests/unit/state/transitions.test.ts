@@ -160,7 +160,10 @@ describe('transition', () => {
     const d = await createDraft(freshInput());
     await transition(d.id, 'PENDING_REVIEW');
 
-    const edited = await transition(d.id, 'EDITED', { patch: { body: 'updated' } });
+    const edited = await transition(d.id, 'EDITED', {
+      patch: { body: 'updated' },
+      snapshotMeta: { actor: 'user', summary: 'test edit' },
+    });
     expect(edited.version).toBe(2);
     expect(edited.status).toBe('PENDING_REVIEW');
     expect(edited.body).toBe('updated');
