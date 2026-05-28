@@ -49,6 +49,7 @@ export async function POST(req: Request) {
         message: parsed.message,
         sources,
         ...(parsed.pastedUrl !== undefined ? { pastedUrl: parsed.pastedUrl } : {}),
+        signal: req.signal,
       },
     );
     const patch = applyEditResponse({

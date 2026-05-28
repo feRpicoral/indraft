@@ -27,6 +27,8 @@ export interface EditArgs {
   sources: SourceItem[];
   pastedUrl?: string;
   pastedSummary?: string;
+  /** Aborting cancels the in-flight LLM call. */
+  signal?: AbortSignal;
 }
 
 export interface GeneratorResult {
@@ -118,6 +120,7 @@ export async function edit(deps: GeneratorDeps, args: EditArgs): Promise<EditGen
       model: cfg.llm.draft_model,
       json: true,
       cacheBreakpoints: cfg.llm.prompt_caching ? cacheBreakpoints : [],
+      ...(args.signal ? { signal: args.signal } : {}),
     });
     let response: EditResponse;
     try {

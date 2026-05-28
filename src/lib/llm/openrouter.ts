@@ -25,6 +25,7 @@ export class OpenRouterProvider implements LLMProvider {
       method: 'POST',
       headers: this.headers(),
       body: JSON.stringify(body),
+      ...(req.signal ? { signal: req.signal } : {}),
     });
     if (!res.ok) {
       const errBody = await res.text();

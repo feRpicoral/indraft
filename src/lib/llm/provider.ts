@@ -43,6 +43,12 @@ export interface CompletionRequest {
   cacheBreakpoints?: number[];
   temperature?: number;
   maxTokens?: number;
+  /**
+   * Optional caller-supplied cancellation signal. When aborted, the underlying
+   * HTTP call is cancelled and the provider throws an AbortError. Used by the
+   * chat-edit route to drop the LLM call when the client disconnects.
+   */
+  signal?: AbortSignal;
 }
 
 export interface CompletionResult {
