@@ -58,7 +58,7 @@ export async function POST() {
           payload: { draft_id: d.id, nonce, exp: Date.now() + ttlSec * 1000 },
           secret: env.MAGIC_LINK_SIGNING_SECRET,
         });
-        const url = `${env.APP_URL ?? ''}/api/review/consume?token=${token}`;
+        const url = `${env.APP_URL}/api/review/consume?token=${token}`;
         const preview = d.body.slice(0, 100).replace(/\n/g, ' ').trim() + '…';
         return { draft_id: d.id, url, preview };
       }),

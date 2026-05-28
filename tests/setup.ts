@@ -7,3 +7,4 @@ process.env.WEBAUTHN_RP_ID ??= 'localhost';
 process.env.NOTIFY_TO_ADDRESS ??= 'test@example.com';
 process.env.NOTIFY_FROM_ADDRESS ??= 'noreply@example.com';
 process.env.ENROLLMENT_BOOTSTRAP_TOKEN ??= 'test-bootstrap-token';
+process.env.APP_URL ??= 'http://localhost:3000';

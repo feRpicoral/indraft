@@ -37,7 +37,7 @@ export async function GET(req: Request) {
     maxAge: 600,
   });
 
-  const redirectUri = `${env.APP_URL ?? new URL(req.url).origin}/api/auth/linkedin/callback`;
+  const redirectUri = `${env.APP_URL}/api/auth/linkedin/callback`;
   const authUrl = buildAuthUrl(
     {
       clientId: env.LINKEDIN_CLIENT_ID,

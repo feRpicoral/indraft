@@ -1,5 +1,6 @@
 import type { Config } from '../config/schema';
 import type { DraftMedia, DraftOutput } from '../types';
+import { loadEnv } from '../config/loader';
 import { downloadImageBytes } from '../util/downloadImageBytes';
 import { log } from '../util/logger';
 import { searchPexels } from './pexels';
@@ -33,7 +34,7 @@ export async function selectMedia(
       return undefined;
     case 'stock': {
       if (cfg.media.image_provider !== 'pexels') return undefined;
-      const apiKey = process.env.PEXELS_API_KEY;
+      const apiKey = loadEnv().PEXELS_API_KEY;
       if (!apiKey) return undefined;
       const query = out.image_query?.trim();
       if (!query) return undefined;
