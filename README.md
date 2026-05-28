@@ -28,7 +28,7 @@ flowchart LR
   PASSKEY -->|verified| PUB[LinkedIn Posts API]
 ```
 
-Modules cleanly separate by responsibility; each has unit + integration tests. The only way to reach `LinkedIn Posts API` is through `WebAuthn assertion` — no scheduled or automatic path posts. The state machine in `src/lib/state/drafts.ts::transition()` is the single writer of draft status and the load-bearing safety boundary.
+Each module has unit + integration tests. The only way to reach `LinkedIn Posts API` is through `WebAuthn assertion`; no scheduled or automatic path posts. The state machine in `src/lib/state/drafts.ts::transition()` is the single writer of draft status and the load-bearing safety boundary.
 
 ## Why these defaults
 
@@ -162,17 +162,6 @@ The publish-guard test (`tests/e2e/publish-guard.test.ts`) is the load-bearing s
 - **Add a pillar / category**: add to `config.content.pillars` and (if it's a new source category) extend `SourceCategory` in `src/lib/types.ts` + `ConfigSchema.sources`.
 - **Tune linter**: thresholds and word lists are all in `config.content.linter`.
 
-## Future path — browser publisher (documented, NOT built)
-
-If the official API is ever insufficient (real person `@mentions`, carousels) and you accept the **ToS-violation and ban risk**, a `BrowserPublisher` can implement the `Publisher` interface (`src/lib/publisher/browserStub.ts` has the stub).
-
-Notes from a 2026 sanity check:
-
-- **Do not use Playwright (even patched).** Playwright forks fail at the automation-protocol fingerprinting layer regardless of patch quality; CDP-driven tools (e.g. `nodriver`) are more robust against hard targets.
-- It would need to run on a **persistent host (not serverless)**, route through your VPN dedicated IP, persist a logged-in session, and simulate genuine human behavior.
-
-The shipped, supported path is the official LinkedIn API.
-
 ## License
 
-MIT. See `LICENSE`.
+MIT. See [LICENSE](LICENSE).
