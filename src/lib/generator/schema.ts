@@ -1,16 +1,21 @@
 import { z } from 'zod';
+import type { DraftOutput } from '../types';
+
+type RawDraftOutput = Omit<DraftOutput, 'article'> & {
+  article?: { source?: string; title: string };
+};
 
 /**
  * Zod schema for the JSON the LLM must emit. Used by `parseJson` to validate
  * the response — anything that doesn't conform triggers a retry.
  */
-export const DraftOutputSchema = z
+export const DraftOutputSchema: z.ZodType<DraftOutput, z.ZodTypeDef, unknown> = z
   .object({
     body: z.string().min(20).max(3000),
     content_kind: z.enum(['text', 'single_image', 'article']),
     article: z
       .object({
-        source: z.string().url(),
+        source: z.string().min(1).optional(),
         title: z.string().min(1).max(400),
       })
       .optional(),
@@ -34,7 +39,31 @@ export const DraftOutputSchema = z
         message: 'article object is required when content_kind === "article"',
       });
     }
+  })
+  .transform((val): DraftOutput => {
+    const raw = val as RawDraftOutput;
+    if (!raw.article) {
+      const { article: _article, ...output } = raw;
+      return output;
+    }
+    return {
+      ...raw,
+      article: {
+        ...raw.article,
+        source: isValidUrl(raw.article.source) ? raw.article.source : raw.source_url,
+      },
+    };
   });
+
+function isValidUrl(value: string | undefined): value is string {
+  if (!value) return false;
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Wrapper schema for a chat-edit turn. The LLM decides whether to apply a

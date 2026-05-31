@@ -18,7 +18,10 @@ export class LlmJsonParseError extends Error {
  * object — strip the most common variants before parsing. If validation still
  * fails, throw `LlmJsonParseError` so the generator can retry.
  */
-export function parseJson<T>(raw: string, schema: z.ZodType<T>): T {
+export function parseJson<TSchema extends z.ZodTypeAny>(
+  raw: string,
+  schema: TSchema,
+): z.output<TSchema> {
   const stripped = stripFences(raw).trim();
   let obj: unknown;
   try {
@@ -45,7 +48,7 @@ export function parseJson<T>(raw: string, schema: z.ZodType<T>): T {
       raw,
     );
   }
-  return result.data;
+  return result.data as z.output<TSchema>;
 }
 
 function stripFences(raw: string): string {

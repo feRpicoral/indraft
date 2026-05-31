@@ -10,6 +10,7 @@ import {
   issueMagicNonce,
 } from '../state/tokens';
 import { createDraft, transition } from '../state/drafts';
+import { recordCronAudit, type CronAuditEntry } from '../state/cronAudit';
 import { recentPillars, lastPillar, isDuplicate } from '../state/history';
 import { collect } from '../collector';
 import { buildProvider } from '../llm';
@@ -59,23 +60,49 @@ export async function runScheduledJob(opts: RunOpts = {}): Promise<RunResult> {
   const cfg = loadConfig();
   const env = loadEnv();
   const kv = getKv();
+  const local = opts.force ? null : localDayAndHour(new Date(now), cfg.schedule.timezone);
+  const audit: CronAuditEntry = {
+    id: newNonce(),
+    status: 'started',
+    started_at: now,
+    dry_run: opts.dryRun === true,
+    force: opts.force === true,
+    target_days: [...cfg.schedule.days],
+    target_hour: cfg.schedule.hour,
+    timezone: cfg.schedule.timezone,
+    ...(local ? { day: local.day, hour: local.hour } : {}),
+  };
+  await recordCronAudit(audit);
+  const finish = async (result: RunResult): Promise<RunResult> => {
+    await recordCronAudit({
+      ...audit,
+      status: result.skipped ? 'skipped' : 'success',
+      finished_at: Date.now(),
+      ...(result.skipped ? { skipped: result.skipped } : {}),
+      ...(result.created ? { draft_id: result.created.id } : {}),
+      ...(result.warnings?.length ? { warnings: result.warnings } : {}),
+    });
+    return result;
+  };
 
-  const lockOk = await kv.set(k.cronLock(), String(now), { ex: CRON_LOCK_TTL_S, nx: true });
-  if (!lockOk) {
-    log.warn('cron lock held; skipping');
-    return { skipped: 'locked' };
-  }
-
+  let lockAcquired = false;
   try {
+    const lockOk = await kv.set(k.cronLock(), String(now), { ex: CRON_LOCK_TTL_S, nx: true });
+    if (!lockOk) {
+      log.warn('cron lock held; skipping');
+      return finish({ skipped: 'locked' });
+    }
+    lockAcquired = true;
+
     if (!opts.force) {
-      const { day, hour } = localDayAndHour(new Date(now), cfg.schedule.timezone);
-      if (!cfg.schedule.days.includes(day)) {
-        log.info('scheduler skip: wrong day', { day });
-        return { skipped: 'wrong_day' };
+      if (!local) throw new Error('local schedule metadata missing');
+      if (!cfg.schedule.days.includes(local.day)) {
+        log.info('scheduler skip: wrong day', { day: local.day });
+        return finish({ skipped: 'wrong_day' });
       }
-      if (Math.abs(hour - cfg.schedule.hour) > HOUR_TOLERANCE) {
-        log.info('scheduler skip: wrong hour', { hour, target: cfg.schedule.hour });
-        return { skipped: 'wrong_hour' };
+      if (Math.abs(local.hour - cfg.schedule.hour) > HOUR_TOLERANCE) {
+        log.info('scheduler skip: wrong hour', { hour: local.hour, target: cfg.schedule.hour });
+        return finish({ skipped: 'wrong_hour' });
       }
     } else {
       log.info('scheduler force=true; bypassing day/hour filter');
@@ -83,13 +110,13 @@ export async function runScheduledJob(opts: RunOpts = {}): Promise<RunResult> {
 
     const tokenWarnings = await preflightToken(cfg, env, now);
     if (tokenWarnings.fatal) {
-      return { skipped: tokenWarnings.fatal, warnings: tokenWarnings.notes };
+      return finish({ skipped: tokenWarnings.fatal, warnings: tokenWarnings.notes });
     }
 
     const sources = await collect(cfg);
     if (sources.length === 0) {
       log.warn('no sources collected');
-      return { skipped: 'no_sources', warnings: tokenWarnings.notes };
+      return finish({ skipped: 'no_sources', warnings: tokenWarnings.notes });
     }
 
     const recent = await recentPillars();
@@ -99,7 +126,7 @@ export async function runScheduledJob(opts: RunOpts = {}): Promise<RunResult> {
 
     if (await isDuplicate({ source_url: chosenItem.url, body: chosenItem.title })) {
       log.info('skipping duplicate item', { url: chosenItem.url });
-      return { skipped: 'duplicate', warnings: tokenWarnings.notes };
+      return finish({ skipped: 'duplicate', warnings: tokenWarnings.notes });
     }
 
     const llm = buildProvider(cfg);
@@ -143,9 +170,17 @@ export async function runScheduledJob(opts: RunOpts = {}): Promise<RunResult> {
       log.info('dry run: skipping notify');
     }
 
-    return { created: pending, warnings: [...tokenWarnings.notes, ...linter_warnings] };
+    return finish({ created: pending, warnings: [...tokenWarnings.notes, ...linter_warnings] });
+  } catch (err) {
+    await recordCronAudit({
+      ...audit,
+      status: 'error',
+      finished_at: Date.now(),
+      error: String(err),
+    });
+    throw err;
   } finally {
-    await kv.del(k.cronLock());
+    if (lockAcquired) await kv.del(k.cronLock());
   }
 }
 

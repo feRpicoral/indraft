@@ -146,6 +146,38 @@ describe('generator.draft', () => {
     expect(res.output.body).toContain('TypeScript 6');
   });
 
+  it('falls back to source_url when article.source is not a URL', async () => {
+    const articleResponse = JSON.stringify({
+      body: 'Specific, opinionated take about a link-card article. The important part is that the source URL stays publishable even if the model labels the source by name.',
+      content_kind: 'article',
+      article: {
+        source: 'Example News',
+        title: 'A real announcement',
+      },
+      needs_image: false,
+      image_source: 'none',
+      link_placement: 'none',
+      hashtags: ['typescript'],
+      mentions: [],
+      pillar: 'fullstack',
+      source_url: 'https://example.com/x',
+    });
+    const llm = new StubLLM([articleResponse]);
+
+    const res = await draft(
+      { cfg, llm },
+      {
+        sources: [sourceItem],
+        chosenItem: sourceItem,
+        targetPillar: 'fullstack',
+        recentPillars: [],
+      },
+    );
+
+    expect(llm.calls).toBe(1);
+    expect(res.output.article?.source).toBe('https://example.com/x');
+  });
+
   it('throws when retries run out of parseable output entirely', async () => {
     const llm = new StubLLM([badResponseUnparseable, badResponseUnparseable, badResponseUnparseable]);
 
