@@ -112,6 +112,18 @@ See `.env.example`. Set on Vercel (production + preview + development) via `verc
 
 The `vercel.json` registers a daily cron at 14:00 UTC. The scheduler reads `config.yml`, filters on day-of-week and local hour, and only runs on the configured days. Vercel Hobby allows once-per-day cron — fits.
 
+### Cron watchdog
+
+GitHub Actions runs `.github/workflows/cron-monitor.yml` at 15:30 UTC on Monday, Wednesday, and Friday. It calls `/api/cron/status` and sends a Resend email if the latest scheduled cron run is missing, stale, skipped, or errored. Configure these GitHub Actions secrets:
+
+```bash
+gh secret set INDRAFT_APP_URL --body "https://indraft.dev"
+gh secret set INDRAFT_CRON_SECRET --body "$CRON_SECRET"
+gh secret set RESEND_API_KEY --body "$RESEND_API_KEY"
+gh secret set NOTIFY_FROM_ADDRESS --body "$NOTIFY_FROM_ADDRESS"
+gh secret set NOTIFY_TO_ADDRESS --body "$NOTIFY_TO_ADDRESS"
+```
+
 ### Locally
 
 ```bash
