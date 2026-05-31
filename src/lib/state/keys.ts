@@ -26,6 +26,8 @@ export const k = {
   session: (sid: string) => `session:${sid}`,
 
   cronLock: () => `cron:lock`,
+  cronAuditLatest: () => `cron:audit:latest`,
+  cronAuditHistory: () => `cron:audit:history`,
 
   accessRequestLock: () => `access:request:lock`,
 } as const;

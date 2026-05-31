@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import { loadEnvConfig } from '@next/env';
 import { registerRun } from './run';
 import { registerDryRun } from './dryRun';
+import { registerCronStatus } from './cronStatus';
 import { registerAuth } from './auth';
 import { registerCheckToken } from './checkToken';
 import { registerClone } from './clone';
@@ -17,6 +18,7 @@ program.name('indraft').description('InDraft local CLI').version('0.1.0');
 
 registerRun(program);
 registerDryRun(program);
+registerCronStatus(program);
 registerAuth(program);
 registerCheckToken(program);
 registerClone(program);

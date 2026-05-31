@@ -118,6 +118,7 @@ The `vercel.json` registers a daily cron at 14:00 UTC. The scheduler reads `conf
 yarn dev                     # Next.js dev server
 yarn indraft run             # run the scheduled job once
 yarn indraft dry-run         # full pipeline, no real publish, no real email
+yarn indraft cron-status     # show recent cron audit entries
 yarn indraft auth            # LinkedIn OAuth bootstrap
 yarn indraft check-token     # exits 1 if < 7 days remain
 ```
@@ -128,6 +129,7 @@ yarn indraft check-token     # exits 1 if < 7 days remain
 |---|---|
 | `yarn indraft run` | Run the scheduled job once. Posts in real life if the day/hour matches. |
 | `yarn indraft dry-run` | Collect → draft → lint → store as PENDING_REVIEW. Skips notification send. CI-safe. |
+| `yarn indraft cron-status` | Show the latest in-progress cron attempt and recent completed cron results. |
 | `yarn indraft auth` | Opens the deployed app's LinkedIn OAuth flow; stores the access token in KV. |
 | `yarn indraft check-token` | Prints days-to-expiry. Exits 1 if < 7 days. |
 

@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { __resetKvForTest } from '@/lib/state/kv';
 import { listPending } from '@/lib/state/drafts';
+import { latestCronAudit, listCronAudit } from '@/lib/state/cronAudit';
 
 const goodLlmResponse = JSON.stringify({
   body: 'Specific, opinionated take about an actual headline. After spending an afternoon with the new release I think the migration story is undersold.',
@@ -119,11 +120,16 @@ describe('dry-run end to end', () => {
         now: Date.parse('2026-05-25T00:30:00Z'),
       });
       const pending = await listPending();
+      const latest = await latestCronAudit();
+      const history = await listCronAudit();
 
       expect(r.created).toBeDefined();
       expect(r.created?.status).toBe('PENDING_REVIEW');
       expect(pending).toHaveLength(1);
       expect(pending[0]?.id).toBe(r.created?.id);
+      expect(latest?.status).toBe('success');
+      expect(latest?.draft_id).toBe(r.created?.id);
+      expect(history[0]?.draft_id).toBe(r.created?.id);
 
       expect(logs.some((l) => l.includes('InDraft — draft ready'))).toBe(false);
     } finally {
@@ -152,5 +158,27 @@ describe('dry-run end to end', () => {
     } finally {
       console.log = origLog;
     }
+  });
+
+  it('records an error audit entry when generation fails before draft creation', async () => {
+    server.use(
+      http.post('https://openrouter.ai/api/v1/chat/completions', () =>
+        HttpResponse.json({ choices: [{ message: { content: 'not json' } }] }),
+      ),
+    );
+    const { runScheduledJob } = await import('@/lib/scheduler/runScheduledJob');
+
+    await expect(
+      runScheduledJob({
+        dryRun: true,
+        now: Date.parse('2026-05-25T00:30:00Z'),
+      }),
+    ).rejects.toThrow();
+    const latest = await latestCronAudit();
+    const history = await listCronAudit();
+
+    expect(latest?.status).toBe('error');
+    expect(latest?.error).toContain('LlmJsonParseError');
+    expect(history[0]?.status).toBe('error');
   });
 });
