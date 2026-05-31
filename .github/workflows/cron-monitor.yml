@@ -1,0 +1,30 @@
+name: cron-monitor
+
+on:
+  schedule:
+    - cron: "30 15 * * 1,3,5"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-cron:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      INDRAFT_APP_URL: ${{ secrets.INDRAFT_APP_URL }}
+      INDRAFT_CRON_SECRET: ${{ secrets.INDRAFT_CRON_SECRET }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      NOTIFY_FROM_ADDRESS: ${{ secrets.NOTIFY_FROM_ADDRESS }}
+      NOTIFY_TO_ADDRESS: ${{ secrets.NOTIFY_TO_ADDRESS }}
+      MAX_AGE_MINUTES: "720"
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Check InDraft cron audit
+        run: node scripts/cronMonitor.mjs
