@@ -20,7 +20,7 @@ jobs:
       NOTIFY_TO_ADDRESS: ${{ secrets.NOTIFY_TO_ADDRESS }}
       MAX_AGE_MINUTES: "720"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v4
         with:
