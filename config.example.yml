@@ -87,10 +87,12 @@ review:
   stale_after_hours: 48
 
 llm:
-  gateway: openrouter
+  # Routes through the Vercel AI Gateway. Models are `creator/model` slugs
+  # (see vercel.com/ai-gateway/models); attach your provider key via BYOK.
+  gateway: vercel
   # Frontier model for drafting (anti-AI-tell quality bar degrades on weaker models).
-  draft_model: anthropic/claude-opus-4-7
+  draft_model: anthropic/claude-opus-4.7
   # Cheap utility model for ranking/tagging source items.
-  utility_model: anthropic/claude-haiku-4-5-20251001
+  utility_model: anthropic/claude-haiku-4.5
   prompt_caching: true
   max_retries: 3

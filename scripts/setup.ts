@@ -84,8 +84,7 @@ interface SecretDef {
 const SECRETS: SecretDef[] = [
   { key: 'LINKEDIN_CLIENT_ID', description: 'LinkedIn app Client ID' },
   { key: 'LINKEDIN_CLIENT_SECRET', description: 'LinkedIn app Client Secret', secret: true },
-  { key: 'OPENROUTER_API_KEY', description: 'OpenRouter API key', secret: true },
-  { key: 'ANTHROPIC_API_KEY', description: 'Anthropic API key (BYOK)', secret: true },
+  { key: 'AI_GATEWAY_API_KEY', description: 'Vercel AI Gateway API key (attach your model key via BYOK in the dashboard)', secret: true },
   { key: 'RESEND_API_KEY', description: 'Resend API key', secret: true },
   { key: 'NOTIFY_TO_ADDRESS', description: 'Where InDraft sends notifications (your inbox)' },
   { key: 'NOTIFY_FROM_ADDRESS', description: 'Verified Resend sender' },
@@ -252,8 +251,8 @@ function manualChecklist() {
    - "Sign In with LinkedIn using OpenID Connect" (openid profile email)
    https://www.linkedin.com/developers/apps
 
-2. OpenRouter — sign up + attach BYOK Anthropic key:
-   https://openrouter.ai/keys → BYOK section
+2. Vercel AI Gateway — create an API key + attach your BYOK Anthropic key:
+   https://vercel.com/dashboard → AI Gateway → API Keys / BYOK
 
 3. Pexels API key:
    https://www.pexels.com/api/

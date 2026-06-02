@@ -31,9 +31,10 @@ const EnvSchema = z
     LINKEDIN_CLIENT_ID: optionalString,
     LINKEDIN_CLIENT_SECRET: optionalString,
 
-    // LLM — at least one required in prod
-    OPENROUTER_API_KEY: optionalString,
-    ANTHROPIC_API_KEY: optionalString,
+    // LLM — required in prod. Routes through the Vercel AI Gateway; the
+    // underlying provider key (e.g. Anthropic) is attached via BYOK in the
+    // Vercel dashboard, not here.
+    AI_GATEWAY_API_KEY: optionalString,
 
     // Email — required in prod (ConsoleNotifier covers dev)
     RESEND_API_KEY: optionalString,
@@ -79,11 +80,11 @@ const EnvSchema = z
         });
       }
     }
-    if (!env.OPENROUTER_API_KEY && !env.ANTHROPIC_API_KEY) {
+    if (!env.AI_GATEWAY_API_KEY) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['OPENROUTER_API_KEY'],
-        message: 'Set OPENROUTER_API_KEY or ANTHROPIC_API_KEY in production',
+        path: ['AI_GATEWAY_API_KEY'],
+        message: 'AI_GATEWAY_API_KEY is required in production',
       });
     }
   });

@@ -4,7 +4,7 @@
  *
  * Prompt caching is expressed as `cacheBreakpoints`: indices in `messages`
  * (after the system message) that should be marked as cache boundaries.
- * The OpenRouter implementation translates this into the underlying
+ * The Vercel AI Gateway implementation translates this into the underlying
  * provider's caching protocol (cache_control on Anthropic, automatic on
  * OpenAI, etc.).
  */
