@@ -89,7 +89,6 @@ review:
 llm:
   # Routes through the Vercel AI Gateway. Models are `creator/model` slugs
   # (see vercel.com/ai-gateway/models); attach your provider key via BYOK.
-  gateway: vercel
   # Frontier model for drafting (anti-AI-tell quality bar degrades on weaker models).
   draft_model: anthropic/claude-opus-4.7
   # Cheap utility model for ranking/tagging source items.

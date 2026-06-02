@@ -70,7 +70,6 @@ const ReviewSchema = z.object({
 });
 
 const LlmSchema = z.object({
-  gateway: z.enum(['vercel']).default('vercel'),
   draft_model: z.string().min(1),
   utility_model: z.string().min(1),
   prompt_caching: z.boolean().default(true),

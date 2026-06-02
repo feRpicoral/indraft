@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   }
 
   const cfg = loadConfig();
-  const llm = buildProvider(cfg);
+  const llm = buildProvider();
   const sources = await collect(cfg, { skipGithub: true });
 
   try {

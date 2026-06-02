@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getLinkedInToken } from '@/lib/state/tokens';
 import { daysToExpiry } from '@/lib/auth/tokenExpiry';
 import { getKv } from '@/lib/state/kv';
-import { loadConfig } from '@/lib/config/loader';
 import { buildProvider } from '@/lib/llm';
 
 export const dynamic = 'force-dynamic';
@@ -35,9 +34,7 @@ async function pingKv(): Promise<boolean> {
 
 async function pingLlm(): Promise<boolean> {
   try {
-    const cfg = loadConfig();
-    const llm = buildProvider(cfg);
-    return await llm.health();
+    return await buildProvider().health();
   } catch {
     return false;
   }
