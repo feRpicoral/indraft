@@ -82,4 +82,43 @@ describe('cron monitor evaluation', () => {
     assert.equal(result.ok, false);
     assert.match(result.reason, /no scheduled cron audit entry/);
   });
+
+  it('passes for a benign skip (nothing new to post)', () => {
+    const result = evaluateCronStatus(
+      {
+        latest: {
+          id: 'run-skip',
+          status: 'skipped',
+          skipped: 'duplicate',
+          started_at: fresh,
+          force: false,
+          dry_run: false,
+        },
+        history: [],
+      },
+      { now, maxAgeMinutes: 720 },
+    );
+
+    assert.equal(result.ok, true);
+  });
+
+  it('fails for a non-benign skip', () => {
+    const result = evaluateCronStatus(
+      {
+        latest: {
+          id: 'run-wrong-day',
+          status: 'skipped',
+          skipped: 'wrong_day',
+          started_at: fresh,
+          force: false,
+          dry_run: false,
+        },
+        history: [],
+      },
+      { now, maxAgeMinutes: 720 },
+    );
+
+    assert.equal(result.ok, false);
+    assert.match(result.reason, /status is skipped \(wrong_day\)/);
+  });
 });
