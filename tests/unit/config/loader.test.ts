@@ -181,7 +181,7 @@ describe('loadEnv', () => {
         LINKEDIN_CLIENT_SECRET: 'secret',
         RESEND_API_KEY: 'rk',
         PEXELS_API_KEY: 'pk',
-        OPENROUTER_API_KEY: 'or',
+        AI_GATEWAY_API_KEY: 'gw',
         KV_REST_API_URL: 'https://kv.example.com',
         KV_REST_API_TOKEN: 'tok',
       });

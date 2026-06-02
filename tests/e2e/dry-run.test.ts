@@ -40,7 +40,7 @@ const rss = `<?xml version="1.0"?>
 
 const server = setupServer(
   http.get('https://example.com/feed', () => new HttpResponse(rss, { headers: { 'content-type': 'application/rss+xml' } })),
-  http.post('https://openrouter.ai/api/v1/chat/completions', () =>
+  http.post('https://ai-gateway.vercel.sh/v1/chat/completions', () =>
     HttpResponse.json({
       choices: [{ message: { content: goodLlmResponse } }],
     }),
@@ -52,7 +52,7 @@ let cfgPath: string;
 
 beforeAll(() => {
   process.env.INDRAFT_FORCE_MEMORY_KV = '1';
-  process.env.OPENROUTER_API_KEY = 'test-or-key';
+  process.env.AI_GATEWAY_API_KEY = 'test-gw-key';
   process.env.MAGIC_LINK_SIGNING_SECRET = 'x'.repeat(40);
   process.env.WEBAUTHN_RP_ID = 'localhost';
   process.env.CRON_SECRET = 'cron';
@@ -94,7 +94,7 @@ beforeEach(() => {
   server.resetHandlers();
   server.use(
     http.get('https://example.com/feed', () => new HttpResponse(rss, { headers: { 'content-type': 'application/rss+xml' } })),
-    http.post('https://openrouter.ai/api/v1/chat/completions', () =>
+    http.post('https://ai-gateway.vercel.sh/v1/chat/completions', () =>
       HttpResponse.json({ choices: [{ message: { content: goodLlmResponse } }] }),
     ),
   );
@@ -162,7 +162,7 @@ describe('dry-run end to end', () => {
 
   it('records an error audit entry when generation fails before draft creation', async () => {
     server.use(
-      http.post('https://openrouter.ai/api/v1/chat/completions', () =>
+      http.post('https://ai-gateway.vercel.sh/v1/chat/completions', () =>
         HttpResponse.json({ choices: [{ message: { content: 'not json' } }] }),
       ),
     );

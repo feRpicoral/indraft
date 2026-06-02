@@ -4,7 +4,7 @@
  *
  * Prompt caching is expressed as `cacheBreakpoints`: indices in `messages`
  * (after the system message) that should be marked as cache boundaries.
- * The OpenRouter implementation translates this into the underlying
+ * The Vercel AI Gateway implementation translates this into the underlying
  * provider's caching protocol (cache_control on Anthropic, automatic on
  * OpenAI, etc.).
  */
@@ -33,8 +33,6 @@ export interface CompletionRequest {
   system: string;
   messages: ChatMessage[];
   model: string;
-  /** Force JSON-formatted output. The provider sets the appropriate response_format. */
-  json?: boolean;
   /**
    * Message indices (0-based, into `messages`) that should be marked as
    * cache boundaries. Anything up to and including each marked index is

@@ -1,24 +1,18 @@
-import { OpenRouterProvider } from './openrouter';
+import { VercelAIGatewayProvider } from './vercelGateway';
 import type { LLMProvider } from './provider';
-import type { Config } from '../config/schema';
 import { loadEnv } from '../config/loader';
 
 export * from './provider';
 export * from './parse';
 
 /**
- * Build the configured LLM provider. Today only OpenRouter is supported;
- * future providers slot in here without changing call sites.
+ * Build the LLM provider. All calls route through the Vercel AI Gateway:
+ * VERCEL_OIDC_TOKEN is injected on the Vercel runtime, and AI_GATEWAY_API_KEY
+ * is used locally (pulled into .env.local).
  */
-export function buildProvider(cfg: Config): LLMProvider {
-  if (cfg.llm.gateway === 'openrouter') {
-    const env = loadEnv();
-    if (!env.OPENROUTER_API_KEY) throw new Error('OPENROUTER_API_KEY is not set');
-    return new OpenRouterProvider({
-      apiKey: env.OPENROUTER_API_KEY,
-      referer: env.APP_URL,
-      appTitle: 'InDraft',
-    });
-  }
-  throw new Error(`Unsupported llm.gateway: ${cfg.llm.gateway}`);
+export function buildProvider(): LLMProvider {
+  const env = loadEnv();
+  const apiKey = env.AI_GATEWAY_API_KEY ?? process.env.VERCEL_OIDC_TOKEN;
+  if (!apiKey) throw new Error('AI_GATEWAY_API_KEY is not set');
+  return new VercelAIGatewayProvider({ apiKey });
 }

@@ -17,7 +17,6 @@ const cfg: Config = {
   post: { link_placement: 'none', hashtags_target: 4 },
   review: { link_ttl_hours: 24, reminder_after_hours: 24, stale_after_hours: 48 },
   llm: {
-    gateway: 'openrouter',
     draft_model: 'm1',
     utility_model: 'm2',
     prompt_caching: true,

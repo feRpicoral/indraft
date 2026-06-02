@@ -129,7 +129,7 @@ export async function runScheduledJob(opts: RunOpts = {}): Promise<RunResult> {
       return finish({ skipped: 'duplicate', warnings: tokenWarnings.notes });
     }
 
-    const llm = buildProvider(cfg);
+    const llm = buildProvider();
     const { output, linter_warnings } = await generateDraft(
       { cfg, llm },
       { sources, chosenItem, targetPillar, recentPillars: recent },

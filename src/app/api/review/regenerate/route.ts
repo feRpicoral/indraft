@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const llm = buildProvider(cfg);
+  const llm = buildProvider();
   const recent = await recentPillars();
   const last = await lastPillar();
   const targetPillar = pickPillar(cfg.content.pillars, last, recent);

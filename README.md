@@ -34,7 +34,7 @@ Each module has unit + integration tests. The only way to reach `LinkedIn Posts 
 
 **`link_placement: "none"` is the default.** 2026 research shows LinkedIn's algorithm suppresses both body-link posts (up to 60% reach hit) and the older "link in first comment" workaround (up to 80%). So InDraft omits the link by default and surfaces the source URL inside the review UI. You can override to `body` or `comment` per post.
 
-**Frontier model for drafting, cheap model for ranking.** The anti-AI-tell quality bar degrades on weaker models, so drafting defaults to Claude Opus 4.7 via OpenRouter (BYOK). Source ranking and other mechanical tasks route to Claude Haiku 4.5.
+**Frontier model for drafting, cheap model for ranking.** The anti-AI-tell quality bar degrades on weaker models, so drafting defaults to Claude Opus 4.7 via the [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) (BYOK). Source ranking and other mechanical tasks route to Claude Haiku 4.5.
 
 **60-day LinkedIn token, no refresh.** Self-serve LinkedIn apps (the only realistic path without partner review) issue 60-day tokens with no refresh. InDraft handles this by:
 
@@ -53,7 +53,7 @@ Two tracks. Pick one — or do the manual steps and run `yarn setup` afterwards 
    - "Sign In with LinkedIn using OpenID Connect" → grants `openid profile email`
 
    Do NOT request "Marketing Developer Platform" — multi-week review, unnecessary.
-2. **OpenRouter** — sign up, then attach your own Anthropic key under **BYOK**. With BYOK, the first 1M requests/month are free.
+2. **Vercel AI Gateway** — create an AI Gateway API key, then attach your own Anthropic key under **BYOK** (dashboard). BYOK routes at provider list price with zero gateway markup.
 3. **Resend** — sign up, verify your sender domain.
 4. **Pexels** — get a free API key (instant, no waitlist).
 5. **Deploy + enroll passkey** — after `yarn setup` deploys the app, visit `https://<your-domain>/enroll?token=$ENROLLMENT_BOOTSTRAP_TOKEN` on the phone you'll publish from. Face ID / Touch ID / device PIN all work.
