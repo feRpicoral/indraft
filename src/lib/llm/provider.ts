@@ -33,8 +33,6 @@ export interface CompletionRequest {
   system: string;
   messages: ChatMessage[];
   model: string;
-  /** Force JSON-formatted output. The provider sets the appropriate response_format. */
-  json?: boolean;
   /**
    * Message indices (0-based, into `messages`) that should be marked as
    * cache boundaries. Anything up to and including each marked index is

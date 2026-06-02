@@ -65,7 +65,6 @@ export async function draft(deps: GeneratorDeps, args: DraftArgs): Promise<Gener
       system,
       messages,
       model: cfg.llm.draft_model,
-      json: true,
       cacheBreakpoints: cfg.llm.prompt_caching ? cacheBreakpoints : [],
     });
     let output: DraftOutput;
@@ -118,7 +117,6 @@ export async function edit(deps: GeneratorDeps, args: EditArgs): Promise<EditGen
       system,
       messages,
       model: cfg.llm.draft_model,
-      json: true,
       cacheBreakpoints: cfg.llm.prompt_caching ? cacheBreakpoints : [],
       ...(args.signal ? { signal: args.signal } : {}),
     });

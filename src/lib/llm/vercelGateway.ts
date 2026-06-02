@@ -70,7 +70,6 @@ export class VercelAIGatewayProvider implements LLMProvider {
       model: req.model,
       messages,
     };
-    if (req.json) body.response_format = { type: 'json_object' };
     if (req.temperature != null) body.temperature = req.temperature;
     if (req.maxTokens != null) body.max_tokens = req.maxTokens;
     return body;
@@ -115,7 +114,6 @@ interface GatewayMessage {
 interface GatewayChatRequest {
   model: string;
   messages: GatewayMessage[];
-  response_format?: { type: 'json_object' };
   temperature?: number;
   max_tokens?: number;
 }

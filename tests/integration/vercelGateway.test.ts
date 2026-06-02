@@ -73,7 +73,7 @@ describe('VercelAIGatewayProvider', () => {
     expect(body.messages[3]!.cache_control).toBeUndefined();
   });
 
-  it('sets response_format when json=true is requested', async () => {
+  it('never sends response_format (the gateway rejects json_object for Anthropic)', async () => {
     let captured: unknown = null;
     server.use(
       http.post(CHAT_URL, async ({ request }) => {
@@ -86,12 +86,9 @@ describe('VercelAIGatewayProvider', () => {
       system: 'sys',
       messages: [{ role: 'user', content: 'x' }],
       model: 'm',
-      json: true,
     });
 
-    expect((captured as { response_format?: object }).response_format).toEqual({
-      type: 'json_object',
-    });
+    expect((captured as { response_format?: object }).response_format).toBeUndefined();
   });
 
   it('throws on non-2xx with the response body included', async () => {
