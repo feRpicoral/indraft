@@ -120,6 +120,7 @@ function renderEditRequest(ctx: EditContext): string {
     '- The CURRENT DRAFT body above is authoritative. The owner may have edited it directly outside of this chat. Preserve their exact wording unless the new message explicitly asks for a change.',
     `- Preserve content_kind ("${current.content_kind}") unless the user explicitly asks to switch kinds. When kind is "article", preserve article.source and article.title above unless the user asks for a topic pivot.`,
     '- Hashtags belong in the `hashtags` JSON field only. Do NOT include them in the body.',
+    '- Links: when there is no link, omit `link` and set `link_placement` to "none"; use "body" or "comment" only with a real URL. Never use other values like "omit".',
     '- If an image is attached to this message, you can see it. Reference it in the body only when the user asks you to or when its contents directly affect the angle.',
     '- If the user supplied quoted verbatim text (in "..." or backticks), use it verbatim in the body and set verbatim_ranges so the linter skips it.',
     '- Do NOT regenerate fields the user did not ask about, unless the change forces it (e.g., a topic pivot also changes source_url and pillar).',
