@@ -23,7 +23,7 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "vitest run",
+    "test": "vitest run && node --test tests/unit/cronMonitor.node.test.mjs",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "dry-run": "tsx scripts/cli/index.ts dry-run",

@@ -110,11 +110,11 @@ See `.env.example`. Set on Vercel (production + preview + development) via `verc
 
 ### On Vercel (production)
 
-The `vercel.json` registers a daily cron at 14:00 UTC. The scheduler reads `config.yml`, filters on day-of-week and local hour, and only runs on the configured days. Vercel Hobby allows once-per-day cron — fits.
+A GitHub Actions workflow (`.github/workflows/cron-run.yml`) calls `/api/cron/run` at 13:00 UTC on Monday, Wednesday, and Friday — Vercel Hobby cron is best-effort and can silently skip a day, so GitHub Actions is the trigger instead. The scheduler still reads `config.yml` and filters on day-of-week and local hour, so a run only proceeds at the configured time. There is intentionally no `vercel.json` cron, so the job has a single trigger and never double-posts.
 
 ### Cron watchdog
 
-GitHub Actions runs `.github/workflows/cron-monitor.yml` at 15:30 UTC on Monday, Wednesday, and Friday. It calls `/api/cron/status` and sends a Resend email if the latest scheduled cron run is missing, stale, skipped, or errored. Configure these GitHub Actions secrets:
+GitHub Actions runs `.github/workflows/cron-monitor.yml` at 17:00 UTC on Monday, Wednesday, and Friday — after the trigger has had time to run. It calls `/api/cron/status` and sends a Resend email if the latest scheduled run is missing, stale, errored, or skipped for a non-benign reason (a "nothing new to post" skip counts as healthy). Both workflows use these GitHub Actions secrets:
 
 ```bash
 gh secret set INDRAFT_APP_URL --body "https://indraft.dev"

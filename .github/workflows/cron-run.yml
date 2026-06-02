@@ -1,0 +1,25 @@
+name: cron-run
+
+on:
+  schedule:
+    - cron: "0 13 * * 1,3,5"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger the InDraft scheduled run
+        env:
+          INDRAFT_APP_URL: ${{ secrets.INDRAFT_APP_URL }}
+          INDRAFT_CRON_SECRET: ${{ secrets.INDRAFT_CRON_SECRET }}
+        run: |
+          code=$(curl -sS --max-time 120 -o /tmp/body -w "%{http_code}" \
+            -H "authorization: Bearer $INDRAFT_CRON_SECRET" \
+            "${INDRAFT_APP_URL%/}/api/cron/run")
+          echo "HTTP $code"
+          cat /tmp/body; echo
+          test "$code" = "200"

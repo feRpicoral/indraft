@@ -1,5 +1,8 @@
 const DEFAULT_MAX_AGE_MINUTES = 12 * 60;
 const STATUS_LIMIT = 10;
+// A scheduled run that skips for these reasons ran fine — there was just nothing
+// new to post. Treat as healthy so they don't page the owner.
+const BENIGN_SKIPS = new Set(['no_sources', 'duplicate']);
 
 export function evaluateCronStatus(data, opts = {}) {
   const now = opts.now ?? Date.now();
@@ -28,10 +31,16 @@ export function evaluateCronStatus(data, opts = {}) {
     };
   }
 
+  if (latestScheduled.status === 'skipped' && BENIGN_SKIPS.has(latestScheduled.skipped)) {
+    return { ok: true, entry: latestScheduled, cutoff };
+  }
+
   if (latestScheduled.status !== 'success') {
     return {
       ok: false,
-      reason: `latest scheduled cron status is ${latestScheduled.status}`,
+      reason: `latest scheduled cron status is ${latestScheduled.status}${
+        latestScheduled.skipped ? ` (${latestScheduled.skipped})` : ''
+      }`,
       entry: latestScheduled,
       cutoff,
     };
