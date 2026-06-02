@@ -23,8 +23,16 @@ export const DraftOutputSchema: z.ZodType<DraftOutput, z.ZodTypeDef, unknown> = 
     image_source: z.enum(['none', 'owner', 'stock', 'ai']),
     image_query: z.string().optional(),
     image_concept: z.string().optional(),
-    link: z.string().url().optional(),
-    link_placement: z.enum(['none', 'body', 'comment']),
+    // Models emit null / "" / "none" / "(none)" to mean "no link"; normalize to undefined.
+    link: z.preprocess(
+      (v) => (v == null || v === '' || v === 'none' || v === '(none)' ? undefined : v),
+      z.string().url().optional(),
+    ),
+    // Models sometimes omit this field or invent "omit"; both mean "no placement".
+    link_placement: z.preprocess(
+      (v) => (v == null || v === 'omit' ? 'none' : v),
+      z.enum(['none', 'body', 'comment']),
+    ),
     hashtags: z.array(z.string()).max(10),
     mentions: z.array(z.string()),
     pillar: z.string(),
