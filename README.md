@@ -15,8 +15,8 @@ LinkedIn post quality is a function of two things: voice and timeliness. Most au
 
 ```mermaid
 flowchart LR
-  CRON[Vercel Cron 0 14 * * *] --> SCHED[runScheduledJob]
-  SCHED -->|day/hour filter| COL[Collector: RSS + GitHub]
+  CRON[GitHub Actions cron 0 13 * * 1,3,5] --> SCHED[runScheduledJob]
+  SCHED -->|day filter| COL[Collector: RSS + GitHub]
   COL --> GEN[Generator + Linter]
   GEN --> MEDIA[Media: Pexels / owner upload]
   MEDIA --> KV[(Vercel KV)]
@@ -90,7 +90,7 @@ yarn indraft check-token   # verifies token is good
 Copy from `config.example.yml`. Every field is documented inline. The key sections:
 
 - `profile.about` — free-text paragraph. **This is the model's primary grounding.** Spend time on it.
-- `schedule` — `days: [MON, WED, FRI]` plus `timezone` and local `hour`. The Vercel cron fires daily UTC; the scheduler filters in code so DST changes don't require editing `vercel.json`.
+- `schedule` — `days: [MON, WED, FRI]` plus `timezone` and local `hour`. A GitHub Actions cron is pinned to that local time in UTC; the scheduler re-checks only the local day-of-week in code (timezone-aware), so GitHub's variable delivery delay never skips a legitimate run.
 - `sources` — per-category RSS lists. Validate at runtime; dead feeds are skipped, not fatal.
 - `content.pillars` — your rotation list. The scheduler avoids repeating the most-recent pillar back-to-back.
 - `content.linter` — thresholds for the anti-AI-tell rules.
@@ -110,7 +110,7 @@ See `.env.example`. Set on Vercel (production + preview + development) via `verc
 
 ### On Vercel (production)
 
-A GitHub Actions workflow (`.github/workflows/cron-run.yml`) calls `/api/cron/run` at 13:00 UTC on Monday, Wednesday, and Friday — Vercel Hobby cron is best-effort and can silently skip a day, so GitHub Actions is the trigger instead. The scheduler still reads `config.yml` and filters on day-of-week and local hour, so a run only proceeds at the configured time. There is intentionally no `vercel.json` cron, so the job has a single trigger and never double-posts.
+A GitHub Actions workflow (`.github/workflows/cron-run.yml`) calls `/api/cron/run` at 13:00 UTC on Monday, Wednesday, and Friday — Vercel Hobby cron is best-effort and can silently skip a day, so GitHub Actions is the trigger instead. The scheduler still reads `config.yml` and filters on day-of-week, so a run only proceeds on the configured days; it deliberately does not gate on the local hour, because GitHub's scheduled delivery runs late by a variable amount and would otherwise skip legitimate runs. There is intentionally no `vercel.json` cron, so the job has a single trigger and never double-posts.
 
 ### Cron watchdog
 
@@ -139,7 +139,7 @@ yarn indraft check-token     # exits 1 if < 7 days remain
 
 | Command | What it does |
 |---|---|
-| `yarn indraft run` | Run the scheduled job once. Posts in real life if the day/hour matches. |
+| `yarn indraft run` | Run the scheduled job once. Posts in real life if the day matches. |
 | `yarn indraft dry-run` | Collect → draft → lint → store as PENDING_REVIEW. Skips notification send. CI-safe. |
 | `yarn indraft cron-status` | Show the latest in-progress cron attempt and recent completed cron results. |
 | `yarn indraft auth` | Opens the deployed app's LinkedIn OAuth flow; stores the access token in KV. |

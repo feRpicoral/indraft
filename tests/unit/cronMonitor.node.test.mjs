@@ -121,4 +121,22 @@ describe('cron monitor evaluation', () => {
     assert.equal(result.ok, false);
     assert.match(result.reason, /status is skipped \(wrong_day\)/);
   });
+
+  it('passes for an in-progress (started) scheduled run', () => {
+    const result = evaluateCronStatus(
+      {
+        latest: {
+          id: 'run-started',
+          status: 'started',
+          started_at: fresh,
+          force: false,
+          dry_run: false,
+        },
+        history: [],
+      },
+      { now, maxAgeMinutes: 720 },
+    );
+
+    assert.equal(result.ok, true);
+  });
 });

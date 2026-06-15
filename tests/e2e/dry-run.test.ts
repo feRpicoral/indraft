@@ -138,6 +138,20 @@ describe('dry-run end to end', () => {
     }
   });
 
+  it('proceeds on a configured day even when the local hour is far from the schedule', async () => {
+    const { runScheduledJob } = await import('@/lib/scheduler/runScheduledJob');
+
+    const r = await runScheduledJob({
+      dryRun: true,
+      now: Date.parse('2026-05-25T05:00:00Z'),
+    });
+    const latest = await latestCronAudit();
+
+    expect(r.skipped).toBeUndefined();
+    expect(r.created?.status).toBe('PENDING_REVIEW');
+    expect(latest?.status).toBe('success');
+  });
+
   it('with dryRun=false the ConsoleNotifier emits the draftReady email body', async () => {
     const logs: string[] = [];
     const origLog = console.log;
