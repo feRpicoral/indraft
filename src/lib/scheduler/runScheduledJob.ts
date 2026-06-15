@@ -26,7 +26,6 @@ import { buildAuthUrl } from '../auth/linkedinOAuth';
 
 export type SkipReason =
   | 'wrong_day'
-  | 'wrong_hour'
   | 'locked'
   | 'token_missing'
   | 'token_expired'
@@ -44,16 +43,13 @@ export interface RunOpts {
   /** Override "now" for deterministic test runs. */
   now?: number;
   /**
-   * Bypass the day-of-week + local-hour filter. Used by manual smoke tests
-   * (`/api/cron/run?force=1` and `yarn indraft run --force`). The daily Vercel
-   * cron never sets this — the filter is what makes a daily UTC trigger fire
-   * only on the configured local days.
+   * Bypass the day-of-week filter to run off-schedule. Used by manual smoke
+   * tests (`/api/cron/run?force=1` and `yarn indraft run --force`).
    */
   force?: boolean;
 }
 
 const CRON_LOCK_TTL_S = 600; // 10 min
-const HOUR_TOLERANCE = 1; // ±1h to absorb DST drift on a daily UTC cron
 
 export async function runScheduledJob(opts: RunOpts = {}): Promise<RunResult> {
   const now = opts.now ?? Date.now();
@@ -100,12 +96,12 @@ export async function runScheduledJob(opts: RunOpts = {}): Promise<RunResult> {
         log.info('scheduler skip: wrong day', { day: local.day });
         return finish({ skipped: 'wrong_day' });
       }
-      if (Math.abs(local.hour - cfg.schedule.hour) > HOUR_TOLERANCE) {
-        log.info('scheduler skip: wrong hour', { hour: local.hour, target: cfg.schedule.hour });
-        return finish({ skipped: 'wrong_hour' });
-      }
+      // No local-hour gate: the GitHub Actions cron already pins the trigger to
+      // the configured days and hour, and its scheduled delivery arrives late by
+      // a variable amount (observed up to ~2h), so a narrow hour window would
+      // skip otherwise-legitimate runs.
     } else {
-      log.info('scheduler force=true; bypassing day/hour filter');
+      log.info('scheduler force=true; bypassing day filter');
     }
 
     const tokenWarnings = await preflightToken(cfg, env, now);
