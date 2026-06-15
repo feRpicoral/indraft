@@ -31,6 +31,13 @@ export function evaluateCronStatus(data, opts = {}) {
     };
   }
 
+  // A run that started but has not yet recorded a terminal status is in
+  // progress, not a failure. The trigger and this monitor are both
+  // GitHub-scheduled and can overlap, so a recent 'started' must not page.
+  if (latestScheduled.status === 'started') {
+    return { ok: true, entry: latestScheduled, cutoff };
+  }
+
   if (latestScheduled.status === 'skipped' && BENIGN_SKIPS.has(latestScheduled.skipped)) {
     return { ok: true, entry: latestScheduled, cutoff };
   }
