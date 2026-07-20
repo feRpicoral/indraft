@@ -91,7 +91,8 @@ function parseRss2(root: Rss2Root, source: string, category: SourceCategory): So
   return items
     .map((it): SourceItem | null => {
       const url = typeof it.link === 'string' ? it.link : (it.link?.['@_href'] ?? it.link?.['#text']);
-      const title = typeof it.title === 'string' ? it.title : (it.title?.['#text'] ?? '');
+      const rawTitle = typeof it.title === 'string' ? it.title : (it.title?.['#text'] ?? '');
+      const title = decodeHtmlEntities(rawTitle);
       if (!url || !title) return null;
       const summary = stripHtml(it['content:encoded'] ?? it.description ?? '');
       const published_at = parseDate(it.pubDate) ?? Date.now();
@@ -115,7 +116,8 @@ function parseAtom(root: AtomRoot, source: string, category: SourceCategory): So
       const link =
         links.find((l) => l['@_rel'] === 'alternate' || !l['@_rel'])?.['@_href'] ??
         links[0]?.['@_href'];
-      const title = typeof e.title === 'string' ? e.title : (e.title?.['#text'] ?? '');
+      const rawTitle = typeof e.title === 'string' ? e.title : (e.title?.['#text'] ?? '');
+      const title = decodeHtmlEntities(rawTitle);
       if (!link || !title) return null;
       const summaryRaw =
         typeof e.summary === 'string'
@@ -143,16 +145,47 @@ function toArray<T>(x: T | T[] | undefined): T[] {
 }
 
 function stripHtml(s: string): string {
-  return s
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
+  return decodeHtmlEntities(s.replace(/<[^>]+>/g, ' '))
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+const NAMED_ENTITIES: Record<string, string> = {
+  nbsp: ' ',
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  rsquo: '’',
+  lsquo: '‘',
+  ldquo: '“',
+  rdquo: '”',
+  mdash: '—',
+  ndash: '–',
+  hellip: '…',
+};
+
+/**
+ * Resolve the HTML entities that survive XML parsing. Feed titles and summaries
+ * arrive inside CDATA marked `type="html"`, so numeric references like
+ * `&#8217;` are verbatim text the XML parser leaves alone; they only become
+ * real characters here.
+ */
+function decodeHtmlEntities(s: string): string {
+  return s
+    .replace(/&#x([0-9a-fA-F]+);/g, (m, hex: string) => fromCodePoint(parseInt(hex, 16)) ?? m)
+    .replace(/&#(\d+);/g, (m, dec: string) => fromCodePoint(parseInt(dec, 10)) ?? m)
+    .replace(/&([a-zA-Z][a-zA-Z0-9]*);/g, (m, name: string) => NAMED_ENTITIES[name] ?? m);
+}
+
+function fromCodePoint(code: number): string | null {
+  if (!Number.isInteger(code) || code < 0 || code > 0x10ffff) return null;
+  try {
+    return String.fromCodePoint(code);
+  } catch {
+    return null;
+  }
 }
 
 function parseDate(s: string | undefined): number | null {
