@@ -5,7 +5,7 @@ import { parseJson, LlmJsonParseError } from '../llm/parse';
 import { lint } from '../linter';
 import { log } from '../util/logger';
 import { stripTrailingHashtagBlock, mergeHashtags } from '../util/hashtag';
-import { DraftOutputSchema, EditResponseSchema } from './schema';
+import { DraftOutputSchema, buildEditResponseSchema } from './schema';
 import { buildDraftMessages, buildSystemPrompt } from './prompt';
 import { buildEditMessages, type EditContext } from './editPrompt';
 
@@ -107,6 +107,7 @@ export async function edit(deps: GeneratorDeps, args: EditArgs): Promise<EditGen
     ...(args.pastedSummary !== undefined ? { pastedSummary: args.pastedSummary } : {}),
   };
   const { messages, cacheBreakpoints } = buildEditMessages(ctx);
+  const editSchema = buildEditResponseSchema(args.current);
   const initialVerbatim = args.current.verbatim_ranges;
   const maxRetries = cfg.llm.max_retries;
   let lastResponse: EditResponse | null = null;
@@ -122,7 +123,7 @@ export async function edit(deps: GeneratorDeps, args: EditArgs): Promise<EditGen
     });
     let response: EditResponse;
     try {
-      response = parseJson(res.text, EditResponseSchema);
+      response = parseJson(res.text, editSchema);
     } catch (err) {
       if (err instanceof LlmJsonParseError && attempt < maxRetries) {
         log.warn('edit parse failure; retrying', { attempt, error: err.message });
