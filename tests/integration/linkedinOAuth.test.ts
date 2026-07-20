@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
-import { buildAuthUrl, exchangeCode, SCOPES } from '@/lib/auth/linkedinOAuth';
+import {
+  buildAuthUrl,
+  buildReauthStartUrl,
+  exchangeCode,
+  SCOPES,
+} from '@/lib/auth/linkedinOAuth';
 
 const CFG = {
   clientId: 'client-id',
@@ -23,6 +28,22 @@ describe('buildAuthUrl', () => {
     expect(url.searchParams.get('state')).toBe('state-123');
     expect(url.searchParams.get('scope')).toBe(SCOPES);
     expect(url.searchParams.get('response_type')).toBe('code');
+  });
+});
+
+describe('buildReauthStartUrl', () => {
+  it('targets the app start route with the bootstrap token, not LinkedIn directly', () => {
+    const url = new URL(buildReauthStartUrl('https://app.example.com', 'boot-123'));
+
+    expect(url.origin + url.pathname).toBe('https://app.example.com/api/auth/linkedin/start');
+    expect(url.searchParams.get('bootstrap')).toBe('boot-123');
+  });
+
+  it('routes through the app so /start can set the state cookie the callback checks', () => {
+    const url = new URL(buildReauthStartUrl('https://app.example.com', 't'));
+
+    expect(url.host).toBe('app.example.com');
+    expect(url.searchParams.get('state')).toBeNull();
   });
 });
 

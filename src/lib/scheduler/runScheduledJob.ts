@@ -16,13 +16,13 @@ import { collect } from '../collector';
 import { buildProvider } from '../llm';
 import { draft as generateDraft } from '../generator';
 import { selectMedia } from '../media';
-import { buildNotifier } from '../notify';
+import { buildNotifier, type Notifier } from '../notify';
 import { signMagicLink } from '../review/magicLink';
 import { newNonce } from '../util/id';
 import { log } from '../util/logger';
 import { localDayAndHour, ONE_DAY_MS } from '../util/time';
 import { daysToExpiry, isExpired, shouldWarnReauth } from '../auth/tokenExpiry';
-import { buildAuthUrl } from '../auth/linkedinOAuth';
+import { buildReauthStartUrl } from '../auth/linkedinOAuth';
 
 export type SkipReason =
   | 'wrong_day'
@@ -197,36 +197,12 @@ async function preflightToken(
   if (!token) {
     // Still allow draft creation — owner can review without a token; only
     // publishing requires it. But we should email a reauth ping.
-    if (env.LINKEDIN_CLIENT_ID && env.LINKEDIN_CLIENT_SECRET) {
-      await notifier.reauthLinkedIn(
-        0,
-        buildAuthUrl(
-          {
-            clientId: env.LINKEDIN_CLIENT_ID,
-            clientSecret: env.LINKEDIN_CLIENT_SECRET,
-            redirectUri: `${env.APP_URL}/api/auth/linkedin/callback`,
-          },
-          'preflight',
-        ),
-      );
-    }
+    await sendReauthPing(env, notifier, 0);
     notes.push('linkedin token missing — drafts will accumulate; publish blocked');
     return { notes };
   }
   if (isExpired(token, now)) {
-    if (env.LINKEDIN_CLIENT_ID && env.LINKEDIN_CLIENT_SECRET) {
-      await notifier.reauthLinkedIn(
-        0,
-        buildAuthUrl(
-          {
-            clientId: env.LINKEDIN_CLIENT_ID,
-            clientSecret: env.LINKEDIN_CLIENT_SECRET,
-            redirectUri: `${env.APP_URL}/api/auth/linkedin/callback`,
-          },
-          'preflight',
-        ),
-      );
-    }
+    await sendReauthPing(env, notifier, 0);
     notes.push('linkedin token expired — drafts will accumulate; publish blocked');
     return { notes };
   }
@@ -234,24 +210,35 @@ async function preflightToken(
     const lastNotified = (await getLinkedInReauthNotifiedAt()) ?? 0;
     if (now - lastNotified > ONE_DAY_MS) {
       // Dedup: at most one reauth email per day
-      if (env.LINKEDIN_CLIENT_ID && env.LINKEDIN_CLIENT_SECRET) {
-        await notifier.reauthLinkedIn(
-          daysToExpiry(token, now),
-          buildAuthUrl(
-            {
-              clientId: env.LINKEDIN_CLIENT_ID,
-              clientSecret: env.LINKEDIN_CLIENT_SECRET,
-              redirectUri: `${env.APP_URL}/api/auth/linkedin/callback`,
-            },
-            'preflight',
-          ),
-        );
-      }
+      await sendReauthPing(env, notifier, daysToExpiry(token, now));
       await setLinkedInReauthNotifiedAt(now);
       notes.push(`linkedin token expires in ${daysToExpiry(token, now)} days`);
     }
   }
   return { notes };
+}
+
+/**
+ * Email a LinkedIn reauth link. The link goes through /api/auth/linkedin/start
+ * (via buildReauthStartUrl) so the OAuth `state` cookie is set before the
+ * redirect to LinkedIn — a link straight to LinkedIn arrives at the callback
+ * with no matching cookie and is rejected as invalid state. Requires the
+ * bootstrap token, which authorizes /start for a cold (sessionless) click and
+ * is the same precondition the `indraft auth` CLI enforces; without it there is
+ * no working self-serve reauth link to send.
+ */
+async function sendReauthPing(
+  env: ReturnType<typeof loadEnv>,
+  notifier: Notifier,
+  daysLeft: number,
+): Promise<void> {
+  if (!env.LINKEDIN_CLIENT_ID || !env.LINKEDIN_CLIENT_SECRET || !env.ENROLLMENT_BOOTSTRAP_TOKEN) {
+    return;
+  }
+  await notifier.reauthLinkedIn(
+    daysLeft,
+    buildReauthStartUrl(env.APP_URL, env.ENROLLMENT_BOOTSTRAP_TOKEN),
+  );
 }
 
 function pickNextPillar(
