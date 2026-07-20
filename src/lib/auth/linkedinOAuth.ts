@@ -23,6 +23,19 @@ export function buildAuthUrl(cfg: LinkedInOAuthCfg, state: string): string {
   return `${AUTH_URL}?${params.toString()}`;
 }
 
+/**
+ * Build the URL that *initiates* the OAuth flow — the link to put in a reauth
+ * email. It targets the app's own /api/auth/linkedin/start rather than LinkedIn
+ * directly so that route can set the CSRF `state` cookie before redirecting on
+ * to LinkedIn; the callback rejects any state that doesn't match that cookie.
+ * The bootstrap token authorizes /start for a click that arrives without a
+ * session, which is the norm for a link opened from email.
+ */
+export function buildReauthStartUrl(appUrl: string, bootstrapToken: string): string {
+  const params = new URLSearchParams({ bootstrap: bootstrapToken });
+  return `${appUrl}/api/auth/linkedin/start?${params.toString()}`;
+}
+
 export interface TokenExchangeResult {
   access_token: string;
   expires_in: number;
