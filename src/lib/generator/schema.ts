@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { DraftOutput } from '../types';
+import type { Draft, DraftOutput, EditResponse } from '../types';
 
 type RawDraftOutput = Omit<DraftOutput, 'article'> & {
   article?: { source?: string; title: string };
@@ -74,19 +74,60 @@ function isValidUrl(value: string | undefined): value is string {
 }
 
 /**
- * Wrapper schema for a chat-edit turn. The LLM decides whether to apply a
- * concrete change ("edit", carries a full `DraftOutput` patch) or just reply
- * conversationally ("reply", no patch). `message` is always present and is
- * what gets stored as the assistant turn in the draft's conversation history.
+ * Reconstruct a full DraftOutput from the current draft. The chat-edit prompt
+ * tells the model to touch only the fields it changed, so an edit patch that
+ * merges onto this base can legitimately omit everything else. Without it, Zod
+ * rejects the partial patch (e.g. `image_source: Required`) and the edit 500s.
  */
-export const EditResponseSchema = z.discriminatedUnion('intent', [
-  z.object({
-    intent: z.literal('reply'),
-    message: z.string().min(1).max(2000),
-  }),
-  z.object({
-    intent: z.literal('edit'),
-    message: z.string().min(1).max(500),
-    patch: DraftOutputSchema,
-  }),
-]);
+function draftToOutput(current: Draft): DraftOutput {
+  const base: DraftOutput = {
+    body: current.body,
+    content_kind: current.content_kind,
+    needs_image: Boolean(current.media),
+    // 'owner' signals resolveChatEditMedia to keep the existing media rather
+    // than refetch a stock/AI image on an edit that never mentioned images.
+    image_source: current.media ? 'owner' : 'none',
+    link_placement: current.link?.placement ?? 'none',
+    hashtags: current.hashtags,
+    mentions: current.mentions,
+    pillar: current.pillar,
+    source_url: current.source_url,
+  };
+  if (current.link) base.link = current.link.url;
+  if (current.article) {
+    base.article = { source: current.article.source, title: current.article.title };
+  }
+  if (current.verbatim_ranges) base.verbatim_ranges = current.verbatim_ranges;
+  return base;
+}
+
+/**
+ * Schema for a chat-edit turn against a specific draft. The LLM decides whether
+ * to apply a concrete change ("edit") or just reply conversationally ("reply").
+ * `message` is always present and is stored as the assistant turn in the
+ * draft's conversation history.
+ *
+ * An "edit" patch is validated as a partial DraftOutput shallow-merged onto the
+ * current draft, so the model only has to return the fields it actually
+ * changed. A full patch still overrides every field, matching prior behavior.
+ */
+export function buildEditResponseSchema(
+  current: Draft,
+): z.ZodType<EditResponse, z.ZodTypeDef, unknown> {
+  const base = draftToOutput(current);
+  const patch = z.preprocess(
+    (v) => (v !== null && typeof v === 'object' && !Array.isArray(v) ? { ...base, ...v } : v),
+    DraftOutputSchema,
+  );
+  return z.discriminatedUnion('intent', [
+    z.object({
+      intent: z.literal('reply'),
+      message: z.string().min(1).max(2000),
+    }),
+    z.object({
+      intent: z.literal('edit'),
+      message: z.string().min(1).max(500),
+      patch,
+    }),
+  ]) as z.ZodType<EditResponse, z.ZodTypeDef, unknown>;
+}

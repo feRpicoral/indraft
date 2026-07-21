@@ -56,6 +56,44 @@ describe('parseFeed (Atom)', () => {
   });
 });
 
+const rss2Entities = `<?xml version="1.0"?>
+<rss version="2.0">
+  <channel>
+    <title>Example</title>
+    <item>
+      <title type="html"><![CDATA[Ford&#8217;s $30,000 truck &amp; more]]></title>
+      <link>https://example.com/1</link>
+      <description><![CDATA[<p>It&#8217;s here &#x2014; really</p>]]></description>
+    </item>
+  </channel>
+</rss>`;
+
+const atomEntities = `<?xml version="1.0"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Example</title>
+  <entry>
+    <title type="html"><![CDATA[LG&#8217;s glossy OLED]]></title>
+    <link href="https://example.com/a1" rel="alternate"/>
+    <summary><![CDATA[Rare &amp; cheap]]></summary>
+  </entry>
+</feed>`;
+
+describe('parseFeed HTML entity decoding', () => {
+  it('decodes numeric and named entities in RSS titles and summaries', () => {
+    const items = parseFeed(rss2Entities, 'example.com', 'dev');
+
+    expect(items[0]?.title).toBe('Ford’s $30,000 truck & more');
+    expect(items[0]?.summary).toBe('It’s here — really');
+  });
+
+  it('decodes entities in Atom titles and summaries', () => {
+    const items = parseFeed(atomEntities, 'example.com', 'dev');
+
+    expect(items[0]?.title).toBe('LG’s glossy OLED');
+    expect(items[0]?.summary).toBe('Rare & cheap');
+  });
+});
+
 describe('parseFeed (unknown)', () => {
   it('returns [] on garbage input', () => {
     const items = parseFeed('<not>a feed</not>', 's', 'dev');

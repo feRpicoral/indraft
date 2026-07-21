@@ -65,7 +65,13 @@ export default function ChatPane({ draft, onSubmit, onCancel, busy, pendingTurn 
           rows={3}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder={busy ? 'Waiting for the assistant…' : 'What should change?'}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              handleSend();
+            }
+          }}
+          placeholder={busy ? 'Waiting for the assistant…' : 'What should change? (Enter to send)'}
           className="w-full resize-none bg-transparent text-sm outline-none placeholder:text-zinc-400"
           disabled={busy}
         />
