@@ -22,6 +22,8 @@ export interface CronAuditEntry {
   draft_id?: string;
   warnings?: string[];
   error?: string;
+  /** Raw model output, truncated, when the run died on an unparseable LLM response. */
+  error_raw?: string;
 }
 
 export async function recordCronAudit(entry: CronAuditEntry): Promise<void> {

@@ -159,6 +159,10 @@ function renderAlertText({ reason, evaluation, status }) {
     if (entry.finished_at) lines.push(`- finished_at: ${formatTime(entry.finished_at)}`);
     if (entry.skipped) lines.push(`- skipped: ${entry.skipped}`);
     if (entry.error) lines.push(`- error: ${entry.error}`);
+    // JSON-quoted so an empty capture is visible as "" and newlines stay on one line.
+    if (typeof entry.error_raw === 'string') {
+      lines.push(`- error_raw: ${JSON.stringify(entry.error_raw)}`);
+    }
     if (entry.draft_id) lines.push(`- draft_id: ${entry.draft_id}`);
   }
 

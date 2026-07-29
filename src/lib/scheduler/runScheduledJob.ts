@@ -14,6 +14,7 @@ import { recordCronAudit, type CronAuditEntry } from '../state/cronAudit';
 import { recentPillars, lastPillar, isDuplicate } from '../state/history';
 import { collect } from '../collector';
 import { buildProvider } from '../llm';
+import { LlmJsonParseError } from '../llm/parse';
 import { draft as generateDraft } from '../generator';
 import { selectMedia } from '../media';
 import { buildNotifier, type Notifier } from '../notify';
@@ -50,6 +51,7 @@ export interface RunOpts {
 }
 
 const CRON_LOCK_TTL_S = 600; // 10 min
+const ERROR_RAW_MAX_CHARS = 2_000;
 
 export async function runScheduledJob(opts: RunOpts = {}): Promise<RunResult> {
   const now = opts.now ?? Date.now();
@@ -173,11 +175,21 @@ export async function runScheduledJob(opts: RunOpts = {}): Promise<RunResult> {
       status: 'error',
       finished_at: Date.now(),
       error: String(err),
+      // Recorded even when empty: "" (gateway returned no content) versus prose
+      // (the model ignored the JSON instruction) is the whole diagnostic, and
+      // it is unrecoverable once the platform logs age out.
+      ...(err instanceof LlmJsonParseError ? { error_raw: capRaw(err.raw) } : {}),
     });
     throw err;
   } finally {
     if (lockAcquired) await kv.del(k.cronLock());
   }
+}
+
+/** Bounded because the audit history keeps 50 entries in a single KV list. */
+function capRaw(raw: string): string {
+  if (raw.length <= ERROR_RAW_MAX_CHARS) return raw;
+  return raw.slice(0, ERROR_RAW_MAX_CHARS - 1).trimEnd() + '…';
 }
 
 interface TokenPreflight {

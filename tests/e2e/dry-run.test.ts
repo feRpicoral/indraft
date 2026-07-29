@@ -193,6 +193,42 @@ describe('dry-run end to end', () => {
 
     expect(latest?.status).toBe('error');
     expect(latest?.error).toContain('LlmJsonParseError');
+    expect(latest?.error_raw).toBe('not json');
     expect(history[0]?.status).toBe('error');
+  });
+
+  it('captures an empty LLM response as an empty error_raw rather than omitting it', async () => {
+    server.use(
+      http.post('https://ai-gateway.vercel.sh/v1/chat/completions', () =>
+        HttpResponse.json({ choices: [{ message: { content: '' } }] }),
+      ),
+    );
+    const { runScheduledJob } = await import('@/lib/scheduler/runScheduledJob');
+
+    await expect(
+      runScheduledJob({ dryRun: true, now: Date.parse('2026-05-25T00:30:00Z') }),
+    ).rejects.toThrow();
+    const latest = await latestCronAudit();
+
+    expect(latest?.status).toBe('error');
+    expect(latest?.error_raw).toBe('');
+  });
+
+  it('caps a runaway LLM response so it cannot bloat the audit entry', async () => {
+    const runaway = 'x'.repeat(10_000);
+    server.use(
+      http.post('https://ai-gateway.vercel.sh/v1/chat/completions', () =>
+        HttpResponse.json({ choices: [{ message: { content: runaway } }] }),
+      ),
+    );
+    const { runScheduledJob } = await import('@/lib/scheduler/runScheduledJob');
+
+    await expect(
+      runScheduledJob({ dryRun: true, now: Date.parse('2026-05-25T00:30:00Z') }),
+    ).rejects.toThrow();
+    const latest = await latestCronAudit();
+
+    expect(latest?.error_raw).toHaveLength(2_000);
+    expect(latest?.error_raw?.endsWith('…')).toBe(true);
   });
 });
