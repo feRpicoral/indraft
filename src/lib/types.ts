@@ -10,6 +10,8 @@ export interface SourceItem {
   published_at: number; // epoch ms
   category: SourceCategory;
   score?: number;
+  /** Image declared by the feed entry, when it carries one. */
+  image_url?: string;
 }
 
 export type LinkPlacement = 'none' | 'body' | 'comment';
@@ -32,7 +34,7 @@ export type ImageSource = 'none' | 'owner' | 'stock' | 'ai';
 export type ContentKind = 'text' | 'single_image' | 'article';
 
 export interface DraftMedia {
-  kind: 'owner' | 'stock' | 'ai';
+  kind: 'owner' | 'stock' | 'ai' | 'source';
   url?: string;
   alt?: string;
   /** Base64-encoded bytes when the image is stored inline (≤1MB). */
