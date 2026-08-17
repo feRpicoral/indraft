@@ -16,7 +16,7 @@ import { collect } from '../collector';
 import { buildProvider } from '../llm';
 import { LlmJsonParseError } from '../llm/parse';
 import { draft as generateDraft } from '../generator';
-import { selectMedia } from '../media';
+import { selectDraftMedia } from '../media';
 import { buildNotifier, type Notifier } from '../notify';
 import { signMagicLink } from '../review/magicLink';
 import { newNonce } from '../util/id';
@@ -133,11 +133,11 @@ export async function runScheduledJob(opts: RunOpts = {}): Promise<RunResult> {
       { sources, chosenItem, targetPillar, recentPillars: recent },
     );
 
-    const media = await selectMedia(output, cfg);
+    const { media, content_kind } = await selectDraftMedia(output, cfg, chosenItem);
 
     const draft = await createDraft({
       body: output.body,
-      content_kind: output.content_kind,
+      content_kind,
       hashtags: output.hashtags,
       mentions: output.mentions,
       pillar: output.pillar,

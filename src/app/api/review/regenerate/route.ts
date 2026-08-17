@@ -6,7 +6,7 @@ import { draft as generateDraft } from '@/lib/generator';
 import { buildProvider } from '@/lib/llm';
 import { loadConfig } from '@/lib/config/loader';
 import { collect } from '@/lib/collector';
-import { selectMedia } from '@/lib/media';
+import { selectDraftMedia } from '@/lib/media';
 import { recentPillars, lastPillar } from '@/lib/state/history';
 import type { Draft, EditTurn, Pillar } from '@/lib/types';
 import { log } from '@/lib/util/logger';
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
       { cfg, llm },
       { sources, chosenItem: chosen, targetPillar, recentPillars: recent },
     );
-    const media = await selectMedia(output, cfg);
+    const { media, content_kind } = await selectDraftMedia(output, cfg, chosen);
 
     const switchTurn: EditTurn = {
       role: 'assistant',
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     };
     const patch: Partial<Draft> = {
       body: output.body,
-      content_kind: output.content_kind,
+      content_kind,
       hashtags: output.hashtags,
       mentions: output.mentions,
       pillar: output.pillar,
@@ -78,12 +78,12 @@ export async function POST(req: Request) {
     };
     if (output.link) patch.link = { url: output.link, placement: output.link_placement };
     else patch.link = undefined;
-    if (output.content_kind === 'article' && output.article) {
+    if (content_kind === 'article' && output.article) {
       patch.article = { source: output.article.source, title: output.article.title };
     } else {
       patch.article = undefined;
     }
-    if (output.content_kind === 'single_image') {
+    if (content_kind === 'single_image') {
       if (media) patch.media = media;
       else if (output.image_source !== 'owner') patch.media = undefined;
     } else {

@@ -1,13 +1,49 @@
 import type { Config } from '../config/schema';
-import type { DraftMedia, DraftOutput } from '../types';
+import type { ContentKind, DraftMedia, DraftOutput, SourceItem } from '../types';
 import { loadEnv } from '../config/loader';
 import { downloadImageBytes } from '../util/downloadImageBytes';
 import { log } from '../util/logger';
 import { searchPexels } from './pexels';
 import { generateAiImage } from './aiImage';
+import { selectSourceImage } from './sourceImage';
 
 export { validateImage } from './validate';
 export { searchPexels } from './pexels';
+export { selectSourceImage } from './sourceImage';
+
+export interface DraftMediaSelection {
+  media?: DraftMedia;
+  /** Kind after attaching the image; a resolved image promotes a text post. */
+  content_kind: ContentKind;
+}
+
+/**
+ * Pick the media for a newly generated draft.
+ *
+ * The source article's own image wins over stock imagery and is attached even
+ * when the generator didn't ask for one: the system prompt biases `needs_image`
+ * to false, so waiting for the model to request an image meant drafts
+ * effectively never got one. A real image from the article also beats a generic
+ * stock photo on relevance.
+ *
+ * Article-kind posts are skipped entirely — LinkedIn renders the link card's
+ * own preview, and the publish route resolves that thumbnail separately.
+ */
+export async function selectDraftMedia(
+  out: DraftOutput,
+  cfg: Config,
+  item: SourceItem,
+): Promise<DraftMediaSelection> {
+  if (out.content_kind === 'article') return { content_kind: 'article' };
+
+  const media = (await selectSourceImage(item)) ?? (await selectMedia(out, cfg));
+  if (!media) return { content_kind: out.content_kind };
+
+  return {
+    media,
+    content_kind: out.content_kind === 'text' ? 'single_image' : out.content_kind,
+  };
+}
 
 /**
  * Select an image for the draft based on the generator's recommendation.
