@@ -55,18 +55,25 @@ describe('resolveChatEditMedia', () => {
           photos: [
             {
               id: 1,
-              src: { large: 'https://images.pexels.com/photo.jpg', large2x: '', medium: '', original: '' },
+              src: {
+                large: 'https://images.pexels.com/photo.jpg',
+                large2x: '',
+                medium: '',
+                original: '',
+              },
               alt: 'Cute kitten',
               photographer: 'P',
             },
           ],
         }),
       ),
-      http.get('https://images.pexels.com/photo.jpg', () =>
-        new HttpResponse(fakeImageBytes(), {
-          status: 200,
-          headers: { 'content-type': 'image/jpeg' },
-        }),
+      http.get(
+        'https://images.pexels.com/photo.jpg',
+        () =>
+          new HttpResponse(fakeImageBytes(), {
+            status: 200,
+            headers: { 'content-type': 'image/jpeg' },
+          }),
       ),
     );
 
@@ -90,7 +97,12 @@ describe('resolveChatEditMedia', () => {
           photos: [
             {
               id: 1,
-              src: { large: 'https://images.pexels.com/dead.jpg', large2x: '', medium: '', original: '' },
+              src: {
+                large: 'https://images.pexels.com/dead.jpg',
+                large2x: '',
+                medium: '',
+                original: '',
+              },
               alt: 'x',
             },
           ],

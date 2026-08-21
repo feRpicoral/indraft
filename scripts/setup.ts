@@ -84,13 +84,20 @@ interface SecretDef {
 const SECRETS: SecretDef[] = [
   { key: 'LINKEDIN_CLIENT_ID', description: 'LinkedIn app Client ID' },
   { key: 'LINKEDIN_CLIENT_SECRET', description: 'LinkedIn app Client Secret', secret: true },
-  { key: 'AI_GATEWAY_API_KEY', description: 'Vercel AI Gateway API key (attach your model key via BYOK in the dashboard)', secret: true },
+  {
+    key: 'AI_GATEWAY_API_KEY',
+    description: 'Vercel AI Gateway API key (attach your model key via BYOK in the dashboard)',
+    secret: true,
+  },
   { key: 'RESEND_API_KEY', description: 'Resend API key', secret: true },
   { key: 'NOTIFY_TO_ADDRESS', description: 'Where InDraft sends notifications (your inbox)' },
   { key: 'NOTIFY_FROM_ADDRESS', description: 'Verified Resend sender' },
   { key: 'PEXELS_API_KEY', description: 'Pexels API key', secret: true },
   { key: 'WEBAUTHN_RP_ID', description: 'WebAuthn relying-party ID (your bare domain)' },
-  { key: 'APP_URL', description: 'Deployed origin (no trailing slash), e.g. https://indraft.you.dev' },
+  {
+    key: 'APP_URL',
+    description: 'Deployed origin (no trailing slash), e.g. https://indraft.you.dev',
+  },
   {
     key: 'MAGIC_LINK_SIGNING_SECRET',
     description: 'Signs magic links (auto-generated)',
@@ -143,14 +150,10 @@ async function ensureSecrets(): Promise<StepResult> {
       value = await ask(s);
       fromPrompt.push(s.key);
     }
-    const r = spawnSync(
-      'vercel',
-      ['env', 'add', s.key, 'production', 'preview', 'development'],
-      {
-        input: value,
-        stdio: ['pipe', 'inherit', 'inherit'],
-      },
-    );
+    const r = spawnSync('vercel', ['env', 'add', s.key, 'production', 'preview', 'development'], {
+      input: value,
+      stdio: ['pipe', 'inherit', 'inherit'],
+    });
     if (r.status !== 0) return { name, status: 'failed', note: `failed on ${s.key}` };
   }
   const summary = fromLocal.length
@@ -208,7 +211,11 @@ async function ensureConfigYaml(): Promise<StepResult> {
   if (!has('vercel')) return { name, status: 'manual' };
   const list = sh('vercel env ls 2>/dev/null');
   if (parseEnvKeys(list.stdout).includes('INDRAFT_CONFIG_YAML')) {
-    return { name, status: 'skipped', note: 'already set; run `vercel env rm INDRAFT_CONFIG_YAML` to update' };
+    return {
+      name,
+      status: 'skipped',
+      note: 'already set; run `vercel env rm INDRAFT_CONFIG_YAML` to update',
+    };
   }
   const local = join(process.cwd(), 'config.yml');
   if (!existsSync(local)) {
@@ -224,10 +231,14 @@ async function ensureConfigYaml(): Promise<StepResult> {
   });
   if (!ok) return { name, status: 'skipped' };
   const yamlBody = readFileSync(local, 'utf8');
-  const r = spawnSync('vercel', ['env', 'add', 'INDRAFT_CONFIG_YAML', 'production', 'preview', 'development'], {
-    input: yamlBody,
-    stdio: ['pipe', 'inherit', 'inherit'],
-  });
+  const r = spawnSync(
+    'vercel',
+    ['env', 'add', 'INDRAFT_CONFIG_YAML', 'production', 'preview', 'development'],
+    {
+      input: yamlBody,
+      stdio: ['pipe', 'inherit', 'inherit'],
+    },
+  );
   return r.status === 0
     ? { name, status: 'ok' }
     : { name, status: 'failed', note: 'env add failed' };
@@ -307,4 +318,3 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
-

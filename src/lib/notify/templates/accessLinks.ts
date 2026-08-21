@@ -4,9 +4,11 @@ export interface AccessLinkRow {
   preview: string;
 }
 
-export function renderAccessLinks(
-  rows: AccessLinkRow[],
-): { subject: string; html: string; text: string } {
+export function renderAccessLinks(rows: AccessLinkRow[]): {
+  subject: string;
+  html: string;
+  text: string;
+} {
   const subject = `InDraft — fresh review links (${rows.length})`;
   const items = rows.map((r) => `<li><a href="${r.url}">${escape(r.preview)}</a></li>`).join('');
   const textItems = rows.map((r) => `- ${r.preview}\n  ${r.url}`).join('\n');

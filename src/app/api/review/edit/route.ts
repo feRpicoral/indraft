@@ -63,7 +63,9 @@ export async function POST(req: Request) {
       if (newMedia) patch.media = newMedia;
     }
     const summary =
-      response.intent === 'edit' ? `LLM edit: ${response.message}` : `LLM reply: ${response.message}`;
+      response.intent === 'edit'
+        ? `LLM edit: ${response.message}`
+        : `LLM reply: ${response.message}`;
     const updated = await transition(current.id, 'EDITED', {
       patch,
       snapshotMeta: { actor: 'llm', summary },

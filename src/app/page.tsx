@@ -10,14 +10,7 @@ export default function Home() {
       <header className="border-b border-zinc-900 px-6 py-5">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <Image
-              src="/logo.svg"
-              alt=""
-              width={28}
-              height={28}
-              className="rounded-md"
-              priority
-            />
+            <Image src="/logo.svg" alt="" width={28} height={28} className="rounded-md" priority />
             <span className="font-semibold tracking-tight">InDraft</span>
           </Link>
           <nav className="flex items-center gap-5 text-sm text-zinc-400">
@@ -50,8 +43,8 @@ export default function Home() {
             Personal LinkedIn post assistant.
           </h1>
           <p className="max-w-xl text-lg leading-7 text-zinc-400">
-            Drafts on a schedule, in your voice, tied to a real headline. Review on your phone
-            and publish with a passkey.
+            Drafts on a schedule, in your voice, tied to a real headline. Review on your phone and
+            publish with a passkey.
           </p>
           <div className="mt-2 flex flex-wrap gap-3">
             <a
@@ -77,38 +70,36 @@ export default function Home() {
             freshness.
           </Step>
           <Step n="2" title="Draft">
-            A frontier model drafts one opinionated post, grounded in a free-text voice block
-            and tied to one real, recent item. A small linter catches the most common AI tells.
+            A frontier model drafts one opinionated post, grounded in a free-text voice block and
+            tied to one real, recent item. A small linter catches the most common AI tells.
           </Step>
           <Step n="3" title="Publish">
-            Review on your phone, edit conversationally, tap Post. A WebAuthn assertion is
-            required and is bound to the exact draft version on screen.
+            Review on your phone, edit conversationally, tap Post. A WebAuthn assertion is required
+            and is bound to the exact draft version on screen.
           </Step>
         </section>
 
         <section className="mt-20 border-t border-zinc-900 pt-12">
           <h2 className="text-xl font-semibold tracking-tight text-zinc-100">Why it exists</h2>
           <p className="mt-4 max-w-2xl leading-7 text-zinc-400">
-            LinkedIn post quality comes down to voice and timeliness. Most automation kills
-            both. InDraft keeps voice with a free-text profile block (the model&apos;s primary
-            grounding) and a thin linter for the most common AI tells. Timeliness comes from
-            re-running against fresh sources every time. The publish path is gated by a passkey
-            assertion bound to the exact draft version, so a captured assertion can&apos;t be
-            replayed against an edited body.
+            LinkedIn post quality comes down to voice and timeliness. Most automation kills both.
+            InDraft keeps voice with a free-text profile block (the model&apos;s primary grounding)
+            and a thin linter for the most common AI tells. Timeliness comes from re-running against
+            fresh sources every time. The publish path is gated by a passkey assertion bound to the
+            exact draft version, so a captured assertion can&apos;t be replayed against an edited
+            body.
           </p>
         </section>
 
         <section className="mt-20 border-t border-zinc-900 pt-12">
-          <h2 className="text-xl font-semibold tracking-tight text-zinc-100">
-            Run your own
-          </h2>
+          <h2 className="text-xl font-semibold tracking-tight text-zinc-100">Run your own</h2>
           <p className="mt-4 max-w-2xl leading-7 text-zinc-400">
             This site runs my personal instance. The engine is open source — fork it, point
             <code className="mx-1 rounded bg-zinc-900 px-1.5 py-0.5 font-mono text-sm text-zinc-200">
               config.yml
             </code>
-            at your own profile and sources, deploy to Vercel. Setup is documented in the README
-            and wrapped in
+            at your own profile and sources, deploy to Vercel. Setup is documented in the README and
+            wrapped in
             <code className="mx-1 rounded bg-zinc-900 px-1.5 py-0.5 font-mono text-sm text-zinc-200">
               yarn setup
             </code>
@@ -140,9 +131,7 @@ export default function Home() {
 function Step({ n, title, children }: { n: string; title: string; children: ReactNode }) {
   return (
     <div className="rounded-lg border border-zinc-900 bg-zinc-950 p-5">
-      <div className="font-mono text-xs uppercase tracking-wider text-zinc-500">
-        Step {n}
-      </div>
+      <div className="font-mono text-xs uppercase tracking-wider text-zinc-500">Step {n}</div>
       <h3 className="mt-2 text-lg font-medium text-zinc-100">{title}</h3>
       <p className="mt-2 text-sm leading-6 text-zinc-400">{children}</p>
     </div>

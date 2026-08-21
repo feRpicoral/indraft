@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
   --background: #ffffff;
@@ -28,7 +28,7 @@ body {
 /* Tailwind v4 dropped the default cursor: pointer on interactive elements. Restore it. */
 @layer base {
   button:not(:disabled),
-  [role="button"]:not([aria-disabled="true"]),
+  [role='button']:not([aria-disabled='true']),
   summary,
   label[for] {
     cursor: pointer;

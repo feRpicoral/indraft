@@ -6,7 +6,11 @@ export interface ReminderArgs {
   hoursAgo: number;
 }
 
-export function renderReminder(args: ReminderArgs): { subject: string; html: string; text: string } {
+export function renderReminder(args: ReminderArgs): {
+  subject: string;
+  html: string;
+  text: string;
+} {
   const subject = `InDraft — reminder: 1 draft awaiting review`;
   const html = `
     <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 560px; margin: 0 auto;">

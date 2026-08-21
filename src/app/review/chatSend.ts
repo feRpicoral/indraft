@@ -7,7 +7,10 @@ export interface ChatSendDraft {
   pastedUrl?: string;
 }
 
-export function resolveChatSendDraft(message: string, pendingTurn: EditTurn | null): ChatSendDraft | null {
+export function resolveChatSendDraft(
+  message: string,
+  pendingTurn: EditTurn | null,
+): ChatSendDraft | null {
   const typed = message.trim().length > 0;
   const text = typed ? message : (pendingTurn?.content ?? '');
   if (!text.trim()) return null;

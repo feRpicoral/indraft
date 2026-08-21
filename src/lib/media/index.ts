@@ -56,10 +56,7 @@ export async function selectDraftMedia(
  * complete the LinkedIn upload chain — without them the post silently
  * downgrades to text.
  */
-export async function selectMedia(
-  out: DraftOutput,
-  cfg: Config,
-): Promise<DraftMedia | undefined> {
+export async function selectMedia(out: DraftOutput, cfg: Config): Promise<DraftMedia | undefined> {
   if (!out.needs_image) return undefined;
 
   switch (out.image_source) {

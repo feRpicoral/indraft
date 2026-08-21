@@ -43,9 +43,7 @@ export default function AccessClient() {
           Sent {count} link{count === 1 ? '' : 's'}. Check your inbox.
         </p>
       )}
-      {status === 'error' && err && (
-        <p className="text-sm text-red-600 dark:text-red-400">{err}</p>
-      )}
+      {status === 'error' && err && <p className="text-sm text-red-600 dark:text-red-400">{err}</p>}
     </div>
   );
 }

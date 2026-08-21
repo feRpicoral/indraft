@@ -1,10 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
-import {
-  createDraft,
-  listPending,
-  listReviewable,
-  transition,
-} from '@/lib/state/drafts';
+import { createDraft, listPending, listReviewable, transition } from '@/lib/state/drafts';
 import { __resetKvForTest } from '@/lib/state/kv';
 
 beforeAll(() => {

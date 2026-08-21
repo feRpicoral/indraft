@@ -198,7 +198,12 @@ describe('selectDraftMedia', () => {
           photos: [
             {
               id: 1,
-              src: { large: 'https://images.pexels.com/p.jpg', large2x: '', medium: '', original: '' },
+              src: {
+                large: 'https://images.pexels.com/p.jpg',
+                large2x: '',
+                medium: '',
+                original: '',
+              },
               alt: 'Stock photo',
             },
           ],

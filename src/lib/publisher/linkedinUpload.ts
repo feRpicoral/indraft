@@ -55,7 +55,11 @@ async function initialize(args: {
   return { uploadUrl, imageUrn };
 }
 
-async function put(uploadUrl: string, bytes: ArrayBuffer | Buffer | Uint8Array, mime: string): Promise<void> {
+async function put(
+  uploadUrl: string,
+  bytes: ArrayBuffer | Buffer | Uint8Array,
+  mime: string,
+): Promise<void> {
   const res = await fetchWithRetry(uploadUrl, {
     method: 'PUT',
     headers: { 'Content-Type': mime },

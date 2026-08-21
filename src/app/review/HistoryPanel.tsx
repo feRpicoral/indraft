@@ -57,11 +57,7 @@ export default function HistoryPanel({ draft, onRestored, onClose }: Props) {
     <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-50">History</h3>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-xs text-zinc-500 hover:underline"
-        >
+        <button type="button" onClick={onClose} className="text-xs text-zinc-500 hover:underline">
           Close
         </button>
       </div>

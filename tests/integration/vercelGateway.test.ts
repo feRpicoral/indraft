@@ -17,7 +17,11 @@ const server = setupServer(
       id: 'gen-test',
       model: body.model,
       choices: [{ message: { content: '{"echo":"ok"}' } }],
-      usage: { prompt_tokens: 100, completion_tokens: 20, prompt_tokens_details: { cached_tokens: 80 } },
+      usage: {
+        prompt_tokens: 100,
+        completion_tokens: 20,
+        prompt_tokens_details: { cached_tokens: 80 },
+      },
       _echo: { messages: body.messages, response_format: body.response_format },
     });
   }),

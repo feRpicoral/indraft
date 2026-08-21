@@ -55,7 +55,8 @@ export async function POST(req: Request) {
         }
       : { media: newMedia };
 
-  const summary = slot === 'thumbnail' ? 'Manual edit: replaced thumbnail' : 'Manual edit: replaced image';
+  const summary =
+    slot === 'thumbnail' ? 'Manual edit: replaced thumbnail' : 'Manual edit: replaced image';
   const updated = await transition(draftId, 'EDITED', {
     patch,
     snapshotMeta: { actor: 'user', summary },

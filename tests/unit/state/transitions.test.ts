@@ -91,17 +91,17 @@ describe('transition', () => {
     const d = await createDraft(freshInput());
     await transition(d.id, 'PENDING_REVIEW');
 
-    await expect(
-      transition(d.id, 'PUBLISHED', { publishedUrn: 'u' }),
-    ).rejects.toBeInstanceOf(TransitionError);
+    await expect(transition(d.id, 'PUBLISHED', { publishedUrn: 'u' })).rejects.toBeInstanceOf(
+      TransitionError,
+    );
   });
 
   it('rejects DRAFTED → PUBLISHING (must go through PENDING_REVIEW)', async () => {
     const d = await createDraft(freshInput());
 
-    await expect(
-      transition(d.id, 'PUBLISHING', { publishProof: 'p' }),
-    ).rejects.toBeInstanceOf(TransitionError);
+    await expect(transition(d.id, 'PUBLISHING', { publishProof: 'p' })).rejects.toBeInstanceOf(
+      TransitionError,
+    );
   });
 
   it('allows PUBLISHING → PUBLISH_FAILED with an error message', async () => {
@@ -150,9 +150,9 @@ describe('transition', () => {
     await transition(d2.id, 'DISCARDED');
 
     await expect(transition(d.id, 'PENDING_REVIEW')).rejects.toBeInstanceOf(TransitionError);
-    await expect(
-      transition(d.id, 'PUBLISHED', { publishedUrn: 'u' }),
-    ).rejects.toBeInstanceOf(TransitionError);
+    await expect(transition(d.id, 'PUBLISHED', { publishedUrn: 'u' })).rejects.toBeInstanceOf(
+      TransitionError,
+    );
     await expect(transition(d2.id, 'DRAFTED')).rejects.toBeInstanceOf(TransitionError);
   });
 

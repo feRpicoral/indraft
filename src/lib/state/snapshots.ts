@@ -26,7 +26,8 @@ export function snapshotFields(d: Draft): DraftSnapshotFields {
   if (d.link) fields.link = { ...d.link };
   if (d.article) fields.article = { ...d.article };
   if (d.media) fields.media = { ...d.media };
-  if (d.verbatim_ranges) fields.verbatim_ranges = d.verbatim_ranges.map((r) => [...r] as [number, number]);
+  if (d.verbatim_ranges)
+    fields.verbatim_ranges = d.verbatim_ranges.map((r) => [...r] as [number, number]);
   return fields;
 }
 

@@ -13,10 +13,7 @@ const parser = new XMLParser({
  * Fetch and parse a feed. Returns [] on any error and logs a warning so a
  * single dead feed never sinks the run. Supports both RSS 2.0 and Atom shapes.
  */
-export async function fetchFeed(
-  url: string,
-  category: SourceCategory,
-): Promise<SourceItem[]> {
+export async function fetchFeed(url: string, category: SourceCategory): Promise<SourceItem[]> {
   let res: Response;
   try {
     res = await fetchWithRetry(url, {
@@ -101,7 +98,8 @@ function parseRss2(root: Rss2Root, source: string, category: SourceCategory): So
   const items = toArray(root.channel.item);
   return items
     .map((it): SourceItem | null => {
-      const url = typeof it.link === 'string' ? it.link : (it.link?.['@_href'] ?? it.link?.['#text']);
+      const url =
+        typeof it.link === 'string' ? it.link : (it.link?.['@_href'] ?? it.link?.['#text']);
       const rawTitle = typeof it.title === 'string' ? it.title : (it.title?.['#text'] ?? '');
       const title = decodeHtmlEntities(rawTitle);
       if (!url || !title) return null;

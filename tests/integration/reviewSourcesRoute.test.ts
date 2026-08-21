@@ -116,9 +116,7 @@ function draftOutput(overrides: Partial<DraftOutput> = {}): DraftOutput {
 
 async function getSources(draftId: string) {
   const { GET } = await import('@/app/api/review/sources/route');
-  const res = await GET(
-    new Request(`https://example.test/api/review/sources?draft_id=${draftId}`),
-  );
+  const res = await GET(new Request(`https://example.test/api/review/sources?draft_id=${draftId}`));
   return { status: res.status, json: (await res.json()) as Record<string, unknown> };
 }
 

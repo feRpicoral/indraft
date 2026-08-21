@@ -156,14 +156,10 @@ export async function transition(
 
   const allowed = ALLOWED[current.status];
   if (!allowed.includes(to)) {
-    throw new TransitionError(
-      `illegal transition ${current.status} → ${to} for draft ${id}`,
-    );
+    throw new TransitionError(`illegal transition ${current.status} → ${to} for draft ${id}`);
   }
   if (to === 'PUBLISHING' && !opts.publishProof) {
-    throw new MissingPublishProofError(
-      `publish requires a verified WebAuthn assertion proof`,
-    );
+    throw new MissingPublishProofError(`publish requires a verified WebAuthn assertion proof`);
   }
   if (to === 'PUBLISHED' && !opts.publishedUrn) {
     throw new MissingPublishedUrnError(

@@ -58,9 +58,7 @@ export default function EnrollClient({ bootstrapToken }: { bootstrapToken: strin
           Passkey registered. You can close this tab.
         </p>
       )}
-      {status === 'error' && err && (
-        <p className="text-sm text-red-600 dark:text-red-400">{err}</p>
-      )}
+      {status === 'error' && err && <p className="text-sm text-red-600 dark:text-red-400">{err}</p>}
     </div>
   );
 }

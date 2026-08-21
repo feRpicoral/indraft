@@ -42,10 +42,7 @@ export async function POST(req: Request) {
   const sources = await collect(cfg, { skipGithub: true });
   const chosen = sources.find((s) => s.url === parsed.source_url);
   if (!chosen) {
-    return NextResponse.json(
-      { error: 'source not in current feed snapshot' },
-      { status: 404 },
-    );
+    return NextResponse.json({ error: 'source not in current feed snapshot' }, { status: 404 });
   }
 
   const llm = buildProvider();

@@ -166,10 +166,7 @@ export async function POST(req: Request) {
 function summarizePatch(before: Draft, patch: Partial<Draft>): string {
   const parts: string[] = [];
   if (patch.body !== undefined && patch.body !== before.body) parts.push('edited body');
-  if (
-    patch.hashtags !== undefined &&
-    !arraysEqual(patch.hashtags, before.hashtags)
-  ) {
+  if (patch.hashtags !== undefined && !arraysEqual(patch.hashtags, before.hashtags)) {
     parts.push('changed tags');
   }
   if (patch.pillar !== undefined && patch.pillar !== before.pillar) parts.push('changed pillar');

@@ -29,7 +29,10 @@ const baseOutput: DraftOutput = {
   source_url: 'https://example.com/x',
 };
 
-const editResponse = (overrides: Partial<DraftOutput> = {}, message = 'Tightened the opener.'): EditResponse => ({
+const editResponse = (
+  overrides: Partial<DraftOutput> = {},
+  message = 'Tightened the opener.',
+): EditResponse => ({
   intent: 'edit',
   message,
   patch: { ...baseOutput, ...overrides },

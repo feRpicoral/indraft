@@ -65,7 +65,7 @@ content:
     # Generic openers that get rejected outright.
     generic_openers:
       - "in today's fast-paced"
-      - "in an era of"
+      - 'in an era of'
       - "let's dive in"
       - "i'm thrilled to share"
       - "it's not just"

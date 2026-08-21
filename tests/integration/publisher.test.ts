@@ -1,11 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
-import {
-  LinkedInApiPublisher,
-  PublisherAuthError,
-  PublisherRateLimitError,
-} from '@/lib/publisher';
+import { LinkedInApiPublisher, PublisherAuthError, PublisherRateLimitError } from '@/lib/publisher';
 
 const ACCESS_TOKEN = 'test-token';
 const PERSON_URN = 'urn:li:person:abc123';
@@ -64,22 +60,19 @@ describe('LinkedInApiPublisher.publish', () => {
   it('publishes image via initializeUpload → PUT → reference URN', async () => {
     const calls: string[] = [];
     server.use(
-      http.post(
-        'https://api.linkedin.com/rest/images',
-        async ({ request }) => {
-          const url = new URL(request.url);
-          if (url.searchParams.get('action') === 'initializeUpload') {
-            calls.push('init');
-            return HttpResponse.json({
-              value: {
-                uploadUrl: 'https://upload.linkedin.com/abc',
-                image: 'urn:li:image:img-1',
-              },
-            });
-          }
-          return new HttpResponse(null, { status: 400 });
-        },
-      ),
+      http.post('https://api.linkedin.com/rest/images', async ({ request }) => {
+        const url = new URL(request.url);
+        if (url.searchParams.get('action') === 'initializeUpload') {
+          calls.push('init');
+          return HttpResponse.json({
+            value: {
+              uploadUrl: 'https://upload.linkedin.com/abc',
+              image: 'urn:li:image:img-1',
+            },
+          });
+        }
+        return new HttpResponse(null, { status: 400 });
+      }),
       http.put('https://upload.linkedin.com/abc', () => {
         calls.push('put');
         return new HttpResponse(null, { status: 201 });
@@ -121,9 +114,7 @@ describe('LinkedInApiPublisher.publish', () => {
       ),
     );
 
-    await expect(publisher.publish({ body: 'x' })).rejects.toBeInstanceOf(
-      PublisherRateLimitError,
-    );
+    await expect(publisher.publish({ body: 'x' })).rejects.toBeInstanceOf(PublisherRateLimitError);
   }, 30_000);
 
   it('addComment posts to the social actions endpoint', async () => {
@@ -167,7 +158,10 @@ describe('LinkedInApiPublisher.publish', () => {
       http.post('https://api.linkedin.com/rest/posts', async ({ request }) => {
         calls.push('post');
         const body = (await request.json()) as {
-          content?: { article?: { source?: string; title?: string; thumbnail?: string }; media?: unknown };
+          content?: {
+            article?: { source?: string; title?: string; thumbnail?: string };
+            media?: unknown;
+          };
         };
         expect(body.content?.article?.source).toBe('https://politico.eu/article');
         expect(body.content?.article?.title).toBe('Dutch government blocks US takeover');
@@ -237,7 +231,10 @@ describe('LinkedInApiPublisher.publish', () => {
       link: 'https://example.com/other',
     });
 
-    const body = capturedBody as { commentary: string; content?: { article?: object; media?: object } };
+    const body = capturedBody as {
+      commentary: string;
+      content?: { article?: object; media?: object };
+    };
     expect(body.content?.article).toBeDefined();
     expect(body.content?.media).toBeUndefined();
     expect(body.commentary).not.toContain('example.com/other');
@@ -245,9 +242,7 @@ describe('LinkedInApiPublisher.publish', () => {
 
   it('healthCheck returns ok for a reachable userinfo endpoint', async () => {
     server.use(
-      http.get('https://api.linkedin.com/v2/userinfo', () =>
-        HttpResponse.json({ sub: 'abc123' }),
-      ),
+      http.get('https://api.linkedin.com/v2/userinfo', () => HttpResponse.json({ sub: 'abc123' })),
     );
 
     const r = await publisher.healthCheck();

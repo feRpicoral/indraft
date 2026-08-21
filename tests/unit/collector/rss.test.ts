@@ -184,7 +184,11 @@ describe('parseFeed image extraction', () => {
   });
 
   it('leaves image_url unset when the entry carries no image', () => {
-    const items = parseFeed(rss2Item('<description>plain text</description>'), 'example.com', 'dev');
+    const items = parseFeed(
+      rss2Item('<description>plain text</description>'),
+      'example.com',
+      'dev',
+    );
 
     expect(items[0]?.image_url).toBeUndefined();
   });

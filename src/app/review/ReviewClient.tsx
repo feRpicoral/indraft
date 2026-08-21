@@ -115,12 +115,7 @@ export default function ReviewClient({ initialDraft, pillars, stale }: Props) {
         <header className="mb-4 flex items-center justify-between">
           <h1 className="text-xl font-semibold">Review draft</h1>
           <div className="flex items-center gap-4">
-            <Toggle
-              checked={rawEdit}
-              onChange={setRawEdit}
-              label="Raw edit"
-              disabled={busy}
-            />
+            <Toggle checked={rawEdit} onChange={setRawEdit} label="Raw edit" disabled={busy} />
             <button
               type="button"
               onClick={() => setShowSources((v) => !v)}
@@ -214,6 +209,10 @@ export default function ReviewClient({ initialDraft, pillars, stale }: Props) {
 
 function isAbortError(err: unknown): boolean {
   return (
-    err instanceof DOMException && err.name === 'AbortError'
-  ) || (typeof err === 'object' && err !== null && 'name' in err && (err as { name: string }).name === 'AbortError');
+    (err instanceof DOMException && err.name === 'AbortError') ||
+    (typeof err === 'object' &&
+      err !== null &&
+      'name' in err &&
+      (err as { name: string }).name === 'AbortError')
+  );
 }
