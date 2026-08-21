@@ -222,3 +222,94 @@ describe('selectDraftMedia', () => {
     expect(result.content_kind).toBe('single_image');
   });
 });
+
+function pngBytes(width: number, height: number): ArrayBuffer {
+  const buf = Buffer.alloc(24);
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(buf, 0);
+  buf.writeUInt32BE(13, 8);
+  buf.write('IHDR', 12, 'ascii');
+  buf.writeUInt32BE(width, 16);
+  buf.writeUInt32BE(height, 20);
+  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
+}
+
+function png(width: number, height: number) {
+  return () =>
+    new HttpResponse(pngBytes(width, height), {
+      status: 200,
+      headers: { 'content-type': 'image/png' },
+    });
+}
+
+describe('selectSourceImage quality filtering', () => {
+  it('rejects a feed image that is a site logo and falls back to og:image', async () => {
+    server.use(
+      http.get('https://news.example.com/article', () =>
+        pageWithOgImage('https://cdn.example.com/real.png'),
+      ),
+      http.get('https://cdn.example.com/real.png', png(1200, 627)),
+    );
+
+    const media = await selectSourceImage(
+      item({ image_url: 'https://cdn.example.com/site-logo.png' }),
+    );
+
+    expect(media?.url).toBe('https://cdn.example.com/real.png');
+  });
+
+  it('rejects a feed image below the size floor and falls back to og:image', async () => {
+    server.use(
+      http.get('https://cdn.example.com/tiny.png', png(300, 168)),
+      http.get('https://news.example.com/article', () =>
+        pageWithOgImage('https://cdn.example.com/real.png'),
+      ),
+      http.get('https://cdn.example.com/real.png', png(1200, 627)),
+    );
+
+    const media = await selectSourceImage(item({ image_url: 'https://cdn.example.com/tiny.png' }));
+
+    expect(media?.url).toBe('https://cdn.example.com/real.png');
+  });
+
+  it('prefers the unsized original when the feed url carries downscale params', async () => {
+    server.use(
+      http.get('https://cdn.example.com/hero.png', ({ request }) => {
+        const width = new URL(request.url).searchParams.get('w');
+        return width === '300' ? png(300, 168)() : png(1456, 816)();
+      }),
+    );
+
+    const media = await selectSourceImage(
+      item({ image_url: 'https://cdn.example.com/hero.png?w=300&q=30' }),
+    );
+
+    expect(media?.url).toBe('https://cdn.example.com/hero.png');
+  });
+
+  it('returns nothing when the og:image is also a site logo', async () => {
+    server.use(
+      http.get('https://news.example.com/article', () =>
+        pageWithOgImage('https://arxiv.org/static/browse/images/arxiv-logo-fb.png'),
+      ),
+      // Served successfully so the rejection is the chrome check, not a 404.
+      http.get('https://arxiv.org/static/browse/images/arxiv-logo-fb.png', png(1200, 627)),
+    );
+
+    const media = await selectSourceImage(item());
+
+    expect(media).toBeUndefined();
+  });
+
+  it('returns nothing when the og:image is below the size floor', async () => {
+    server.use(
+      http.get('https://news.example.com/article', () =>
+        pageWithOgImage('https://cdn.example.com/small.png'),
+      ),
+      http.get('https://cdn.example.com/small.png', png(200, 100)),
+    );
+
+    const media = await selectSourceImage(item());
+
+    expect(media).toBeUndefined();
+  });
+});
