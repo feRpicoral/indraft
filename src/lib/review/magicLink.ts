@@ -35,7 +35,9 @@ export function verifyMagicLink(args: {
   if (!constantTimeStringEqual(sig, expected)) return null;
   let payload: MagicPayload;
   try {
-    payload = JSON.parse(Buffer.from(payloadB64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'));
+    payload = JSON.parse(
+      Buffer.from(payloadB64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'),
+    );
   } catch {
     return null;
   }

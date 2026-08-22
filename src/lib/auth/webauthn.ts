@@ -104,7 +104,9 @@ export async function buildAuthenticationOptions(args: {
     userVerification: 'preferred',
     // Bind a challenge to the draft version when provided so a stolen
     // assertion can't be replayed against a different draft state.
-    ...(args.challengeBinding ? { challenge: new TextEncoder().encode(args.challengeBinding) } : {}),
+    ...(args.challengeBinding
+      ? { challenge: new TextEncoder().encode(args.challengeBinding) }
+      : {}),
   });
   await storeChallenge(args.sessionId, opts.challenge);
   return opts;

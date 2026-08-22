@@ -95,9 +95,7 @@ export default function SourcesPanel({ draft, onRegenerated, onClose }: Props) {
                         </span>
                       )}
                     </div>
-                    <p className="mt-1 font-medium text-zinc-900 dark:text-zinc-50">
-                      {item.title}
-                    </p>
+                    <p className="mt-1 font-medium text-zinc-900 dark:text-zinc-50">{item.title}</p>
                     {item.summary && (
                       <p className="mt-1 line-clamp-3 text-xs text-zinc-500">{item.summary}</p>
                     )}
@@ -115,7 +113,10 @@ export default function SourcesPanel({ draft, onRegenerated, onClose }: Props) {
                 </div>
                 {confirmUrl === item.url && (
                   <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
-                    <p>Regenerate the draft from this source? The current version is saved to history.</p>
+                    <p>
+                      Regenerate the draft from this source? The current version is saved to
+                      history.
+                    </p>
                     <div className="mt-2 flex gap-2">
                       <button
                         type="button"

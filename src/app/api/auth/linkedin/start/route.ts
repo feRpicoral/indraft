@@ -22,7 +22,8 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const bootstrap = url.searchParams.get('bootstrap');
   const sess = await getCurrentSession();
-  const okBootstrap = bootstrap && env.ENROLLMENT_BOOTSTRAP_TOKEN && bootstrap === env.ENROLLMENT_BOOTSTRAP_TOKEN;
+  const okBootstrap =
+    bootstrap && env.ENROLLMENT_BOOTSTRAP_TOKEN && bootstrap === env.ENROLLMENT_BOOTSTRAP_TOKEN;
   if (!okBootstrap && !sess) {
     return new NextResponse('unauthorized', { status: 401 });
   }

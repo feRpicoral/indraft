@@ -13,10 +13,7 @@ const parser = new XMLParser({
  * Fetch and parse a feed. Returns [] on any error and logs a warning so a
  * single dead feed never sinks the run. Supports both RSS 2.0 and Atom shapes.
  */
-export async function fetchFeed(
-  url: string,
-  category: SourceCategory,
-): Promise<SourceItem[]> {
+export async function fetchFeed(url: string, category: SourceCategory): Promise<SourceItem[]> {
   let res: Response;
   try {
     res = await fetchWithRetry(url, {
@@ -58,6 +55,12 @@ interface Rss2Root {
     item?: Rss2Item | Rss2Item[];
   };
 }
+interface MediaNode {
+  '@_url'?: string;
+  '@_type'?: string;
+  '@_medium'?: string;
+}
+
 interface Rss2Item {
   title?: string | { '#text'?: string };
   link?: string | { '#text'?: string; '@_href'?: string };
@@ -65,6 +68,9 @@ interface Rss2Item {
   'content:encoded'?: string;
   pubDate?: string;
   guid?: string | { '#text'?: string };
+  'media:content'?: MediaNode | MediaNode[];
+  'media:thumbnail'?: MediaNode | MediaNode[];
+  enclosure?: MediaNode | MediaNode[];
 }
 
 interface AtomRoot {
@@ -79,6 +85,8 @@ interface AtomEntry {
   updated?: string;
   published?: string;
   id?: string;
+  'media:content'?: MediaNode | MediaNode[];
+  'media:thumbnail'?: MediaNode | MediaNode[];
 }
 interface AtomLink {
   '@_href'?: string;
@@ -90,12 +98,19 @@ function parseRss2(root: Rss2Root, source: string, category: SourceCategory): So
   const items = toArray(root.channel.item);
   return items
     .map((it): SourceItem | null => {
-      const url = typeof it.link === 'string' ? it.link : (it.link?.['@_href'] ?? it.link?.['#text']);
+      const url =
+        typeof it.link === 'string' ? it.link : (it.link?.['@_href'] ?? it.link?.['#text']);
       const rawTitle = typeof it.title === 'string' ? it.title : (it.title?.['#text'] ?? '');
       const title = decodeHtmlEntities(rawTitle);
       if (!url || !title) return null;
-      const summary = stripHtml(it['content:encoded'] ?? it.description ?? '');
+      const html = it['content:encoded'] ?? it.description ?? '';
+      const summary = stripHtml(html);
       const published_at = parseDate(it.pubDate) ?? Date.now();
+      const image_url = firstImageUrl(
+        [it['media:content'], it['media:thumbnail'], it.enclosure],
+        html,
+        url,
+      );
       return {
         title,
         url,
@@ -103,6 +118,7 @@ function parseRss2(root: Rss2Root, source: string, category: SourceCategory): So
         source,
         published_at,
         category,
+        ...(image_url ? { image_url } : {}),
       };
     })
     .filter((x): x is SourceItem => x !== null);
@@ -127,6 +143,18 @@ function parseAtom(root: AtomRoot, source: string, category: SourceCategory): So
             '');
       const summary = stripHtml(summaryRaw);
       const published_at = parseDate(e.published ?? e.updated) ?? Date.now();
+      const enclosures: MediaNode[] = links
+        .filter((l) => l['@_rel'] === 'enclosure' && l['@_href'])
+        .map((l) => ({ '@_url': l['@_href'], '@_type': l['@_type'] }));
+      // Scanned separately from summaryRaw: entries commonly carry a plain-text
+      // <summary> alongside an HTML <content> that holds the only <img>, and
+      // summaryRaw stops at the first of the two that exists.
+      const contentHtml = typeof e.content === 'string' ? e.content : (e.content?.['#text'] ?? '');
+      const image_url = firstImageUrl(
+        [e['media:content'], e['media:thumbnail'], enclosures],
+        `${summaryRaw}\n${contentHtml}`,
+        link,
+      );
       return {
         title,
         url: link,
@@ -134,9 +162,53 @@ function parseAtom(root: AtomRoot, source: string, category: SourceCategory): So
         source,
         published_at,
         category,
+        ...(image_url ? { image_url } : {}),
       };
     })
     .filter((x): x is SourceItem => x !== null);
+}
+
+/**
+ * Resolve the entry's image, preferring explicit media declarations over an
+ * image scraped out of the summary HTML. Feeds disagree wildly on which tag
+ * they use — media:content (Ars), enclosure (Crunchbase, VentureBeat), or
+ * nothing but an inline <img> (The Verge) — so all of them are tried.
+ */
+function firstImageUrl(
+  nodeGroups: Array<MediaNode | MediaNode[] | undefined>,
+  html: string,
+  base: string,
+): string | undefined {
+  for (const group of nodeGroups) {
+    for (const node of toArray(group)) {
+      const url = imageNodeUrl(node);
+      if (url) return resolveUrl(url, base);
+    }
+  }
+  const inline = html.match(/<img[^>]+src\s*=\s*["']([^"']+)["']/i)?.[1];
+  return inline ? resolveUrl(decodeHtmlEntities(inline), base) : undefined;
+}
+
+const IMAGE_EXTENSION = /\.(png|jpe?g|gif|webp|avif)(\?|#|$)/i;
+
+function imageNodeUrl(node: MediaNode | undefined): string | undefined {
+  const url = node?.['@_url'];
+  if (!url) return undefined;
+  const type = node['@_type'];
+  const medium = node['@_medium'];
+  if (type) return type.startsWith('image/') ? url : undefined;
+  if (medium) return medium === 'image' ? url : undefined;
+  // Untyped nodes are only trusted when the URL itself looks like an image,
+  // otherwise audio/video enclosures get picked up as thumbnails.
+  return IMAGE_EXTENSION.test(url) ? url : undefined;
+}
+
+function resolveUrl(candidate: string, base: string): string {
+  try {
+    return new URL(candidate, base).toString();
+  } catch {
+    return candidate;
+  }
 }
 
 function toArray<T>(x: T | T[] | undefined): T[] {

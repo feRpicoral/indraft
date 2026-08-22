@@ -67,11 +67,13 @@ describe('selectMedia (stock)', () => {
           ],
         }),
       ),
-      http.get('https://images.pexels.com/photo-1/large.jpg', () =>
-        new HttpResponse(fakeImageBytes(), {
-          status: 200,
-          headers: { 'content-type': 'image/jpeg' },
-        }),
+      http.get(
+        'https://images.pexels.com/photo-1/large.jpg',
+        () =>
+          new HttpResponse(fakeImageBytes(), {
+            status: 200,
+            headers: { 'content-type': 'image/jpeg' },
+          }),
       ),
     );
 
@@ -94,7 +96,12 @@ describe('selectMedia (stock)', () => {
           photos: [
             {
               id: 1,
-              src: { large: 'https://images.pexels.com/dead.jpg', large2x: '', medium: '', original: '' },
+              src: {
+                large: 'https://images.pexels.com/dead.jpg',
+                large2x: '',
+                medium: '',
+                original: '',
+              },
               alt: 'x',
             },
           ],
@@ -115,17 +122,24 @@ describe('selectMedia (stock)', () => {
           photos: [
             {
               id: 1,
-              src: { large: 'https://images.pexels.com/photo.webp', large2x: '', medium: '', original: '' },
+              src: {
+                large: 'https://images.pexels.com/photo.webp',
+                large2x: '',
+                medium: '',
+                original: '',
+              },
               alt: 'x',
             },
           ],
         }),
       ),
-      http.get('https://images.pexels.com/photo.webp', () =>
-        new HttpResponse(fakeImageBytes(), {
-          status: 200,
-          headers: { 'content-type': 'image/webp' },
-        }),
+      http.get(
+        'https://images.pexels.com/photo.webp',
+        () =>
+          new HttpResponse(fakeImageBytes(), {
+            status: 200,
+            headers: { 'content-type': 'image/webp' },
+          }),
       ),
     );
 

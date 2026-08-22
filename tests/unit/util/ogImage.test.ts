@@ -25,11 +25,13 @@ describe('fetchOgImage', () => {
           </head></html>
         `),
       ),
-      http.get('https://example.com/og.png', () =>
-        new HttpResponse(fakeImageBytes(), {
-          status: 200,
-          headers: { 'content-type': 'image/png' },
-        }),
+      http.get(
+        'https://example.com/og.png',
+        () =>
+          new HttpResponse(fakeImageBytes(), {
+            status: 200,
+            headers: { 'content-type': 'image/png' },
+          }),
       ),
     );
 
@@ -48,11 +50,13 @@ describe('fetchOgImage', () => {
           `<html><head><meta name="twitter:image" content="https://example.com/t.jpg"></head></html>`,
         ),
       ),
-      http.get('https://example.com/t.jpg', () =>
-        new HttpResponse(fakeImageBytes(), {
-          status: 200,
-          headers: { 'content-type': 'image/jpeg' },
-        }),
+      http.get(
+        'https://example.com/t.jpg',
+        () =>
+          new HttpResponse(fakeImageBytes(), {
+            status: 200,
+            headers: { 'content-type': 'image/jpeg' },
+          }),
       ),
     );
 
@@ -66,11 +70,13 @@ describe('fetchOgImage', () => {
       http.get('https://example.com/article', () =>
         HttpResponse.html(`<meta property="og:image" content="/relative.png">`),
       ),
-      http.get('https://example.com/relative.png', () =>
-        new HttpResponse(fakeImageBytes(), {
-          status: 200,
-          headers: { 'content-type': 'image/png' },
-        }),
+      http.get(
+        'https://example.com/relative.png',
+        () =>
+          new HttpResponse(fakeImageBytes(), {
+            status: 200,
+            headers: { 'content-type': 'image/png' },
+          }),
       ),
     );
 
@@ -86,11 +92,13 @@ describe('fetchOgImage', () => {
           `<html><head><title>The Headline</title><meta property="og:image" content="https://example.com/og.png"></head></html>`,
         ),
       ),
-      http.get('https://example.com/og.png', () =>
-        new HttpResponse(fakeImageBytes(), {
-          status: 200,
-          headers: { 'content-type': 'image/png' },
-        }),
+      http.get(
+        'https://example.com/og.png',
+        () =>
+          new HttpResponse(fakeImageBytes(), {
+            status: 200,
+            headers: { 'content-type': 'image/png' },
+          }),
       ),
     );
 
@@ -129,11 +137,13 @@ describe('fetchOgImage', () => {
       http.get('https://example.com/article', () =>
         HttpResponse.html(`<meta property="og:image" content="https://example.com/og.webp">`),
       ),
-      http.get('https://example.com/og.webp', () =>
-        new HttpResponse(fakeImageBytes(), {
-          status: 200,
-          headers: { 'content-type': 'image/webp' },
-        }),
+      http.get(
+        'https://example.com/og.webp',
+        () =>
+          new HttpResponse(fakeImageBytes(), {
+            status: 200,
+            headers: { 'content-type': 'image/webp' },
+          }),
       ),
     );
 

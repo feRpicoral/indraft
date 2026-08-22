@@ -12,9 +12,10 @@ export interface EditContext {
   pastedSummary?: string;
 }
 
-export function buildEditMessages(
-  ctx: EditContext,
-): { messages: ChatMessage[]; cacheBreakpoints: number[] } {
+export function buildEditMessages(ctx: EditContext): {
+  messages: ChatMessage[];
+  cacheBreakpoints: number[];
+} {
   const profileBlock = renderProfileBlock(ctx.cfg);
   const sourceSnapshot = renderSourceSnapshot(ctx.sources);
   const editText = renderEditRequest(ctx);
@@ -155,7 +156,8 @@ function mediaSummary(draft: Draft): string {
   const kind = m.kind;
   const alt = m.alt ? ` alt="${m.alt}"` : '';
   if (m.url) return `attached (${kind}, url)${alt}`;
-  if (m.bytes && m.mime) return `attached (${kind}, ${m.mime}, ${approxKb(m.bytes)}KB inline)${alt}`;
+  if (m.bytes && m.mime)
+    return `attached (${kind}, ${m.mime}, ${approxKb(m.bytes)}KB inline)${alt}`;
   return `attached (${kind})${alt}`;
 }
 

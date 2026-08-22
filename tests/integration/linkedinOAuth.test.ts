@@ -1,12 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
-import {
-  buildAuthUrl,
-  buildReauthStartUrl,
-  exchangeCode,
-  SCOPES,
-} from '@/lib/auth/linkedinOAuth';
+import { buildAuthUrl, buildReauthStartUrl, exchangeCode, SCOPES } from '@/lib/auth/linkedinOAuth';
 
 const CFG = {
   clientId: 'client-id',
@@ -50,18 +45,15 @@ describe('buildReauthStartUrl', () => {
 describe('exchangeCode', () => {
   it('exchanges code for token and resolves the person urn via userinfo', async () => {
     server.use(
-      http.post(
-        'https://www.linkedin.com/oauth/v2/accessToken',
-        async ({ request }) => {
-          const text = await request.text();
-          expect(text).toContain('grant_type=authorization_code');
-          expect(text).toContain('code=test-code');
-          return HttpResponse.json({
-            access_token: 'access-token-x',
-            expires_in: 60 * 86400,
-          });
-        },
-      ),
+      http.post('https://www.linkedin.com/oauth/v2/accessToken', async ({ request }) => {
+        const text = await request.text();
+        expect(text).toContain('grant_type=authorization_code');
+        expect(text).toContain('code=test-code');
+        return HttpResponse.json({
+          access_token: 'access-token-x',
+          expires_in: 60 * 86400,
+        });
+      }),
       http.get('https://api.linkedin.com/v2/userinfo', ({ request }) => {
         const auth = request.headers.get('authorization');
         expect(auth).toBe('Bearer access-token-x');

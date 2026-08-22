@@ -21,7 +21,12 @@ export function registerAuth(program: Command): void {
       }
       const target = `${base}/api/auth/linkedin/start?bootstrap=${encodeURIComponent(bootstrap)}`;
       console.log(`Opening ${target}`);
-      const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
+      const cmd =
+        process.platform === 'darwin'
+          ? 'open'
+          : process.platform === 'win32'
+            ? 'start'
+            : 'xdg-open';
       spawn(cmd, [target], { stdio: 'ignore', detached: true }).unref();
       console.log('Complete the flow in your browser. The callback writes the token to KV.');
     });

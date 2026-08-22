@@ -6,7 +6,9 @@ import { k } from './keys';
 const HISTORY_CAP = 200;
 const ROTATION_WINDOW = 5;
 
-export async function recordPublished(entry: Omit<HistoryEntry, 'body_hash'> & { body: string }): Promise<void> {
+export async function recordPublished(
+  entry: Omit<HistoryEntry, 'body_hash'> & { body: string },
+): Promise<void> {
   const kv = getKv();
   const record: HistoryEntry = {
     draft_id: entry.draft_id,

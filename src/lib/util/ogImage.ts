@@ -18,6 +18,8 @@ export interface OgImage {
   mime: 'image/png' | 'image/jpeg';
   /** Optional alt text scraped from og:image:alt or the page title. */
   alt?: string;
+  /** Absolute URL the bytes came from, for callers that vet the source. */
+  url: string;
 }
 
 const HTML_TIMEOUT_MS = 8_000;
@@ -108,7 +110,7 @@ function resolveUrl(base: string, candidate: string): string {
 async function downloadImage(url: string, alt: string | undefined): Promise<OgImage | null> {
   const img = await downloadImageBytes(url, { timeoutMs: IMAGE_TIMEOUT_MS });
   if (!img) return null;
-  const result: OgImage = { bytes: img.bytes, mime: img.mime };
+  const result: OgImage = { bytes: img.bytes, mime: img.mime, url };
   if (alt) result.alt = alt;
   return result;
 }

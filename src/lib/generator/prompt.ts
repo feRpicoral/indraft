@@ -75,9 +75,10 @@ export interface DraftContext {
  *
  * Returns `messages` and the indices to mark as cache boundaries.
  */
-export function buildDraftMessages(
-  ctx: DraftContext,
-): { messages: ChatMessage[]; cacheBreakpoints: number[] } {
+export function buildDraftMessages(ctx: DraftContext): {
+  messages: ChatMessage[];
+  cacheBreakpoints: number[];
+} {
   const profileBlock = renderProfileBlock(ctx.cfg);
   const sourceSnapshot = renderSourceSnapshot(ctx.sources);
   const requestBody = renderDraftRequest(ctx);

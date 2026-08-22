@@ -27,9 +27,7 @@ export async function collect(cfg: Config, opts: CollectOpts = {}): Promise<Sour
     for (const u of urls) categoryFeeds.push([cat, u]);
   }
 
-  const feedResults = await Promise.all(
-    categoryFeeds.map(([cat, url]) => fetchFeed(url, cat)),
-  );
+  const feedResults = await Promise.all(categoryFeeds.map(([cat, url]) => fetchFeed(url, cat)));
   const collected: SourceItem[] = feedResults.flat();
 
   if (!opts.skipGithub && cfg.sources.personal?.github_user) {

@@ -142,15 +142,15 @@ describe('loadEnv', () => {
   });
 
   it('rejects a short signing secret', () => {
-    expect(() =>
-      loadEnv({ ...baseValid, MAGIC_LINK_SIGNING_SECRET: 'short' }),
-    ).toThrow(/MAGIC_LINK_SIGNING_SECRET/);
+    expect(() => loadEnv({ ...baseValid, MAGIC_LINK_SIGNING_SECRET: 'short' })).toThrow(
+      /MAGIC_LINK_SIGNING_SECRET/,
+    );
   });
 
   it('rejects an invalid email address', () => {
-    expect(() =>
-      loadEnv({ ...baseValid, NOTIFY_TO_ADDRESS: 'not-an-email' }),
-    ).toThrow(/NOTIFY_TO_ADDRESS/);
+    expect(() => loadEnv({ ...baseValid, NOTIFY_TO_ADDRESS: 'not-an-email' })).toThrow(
+      /NOTIFY_TO_ADDRESS/,
+    );
   });
 
   it('requires APP_URL', () => {

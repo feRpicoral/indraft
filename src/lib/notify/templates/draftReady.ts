@@ -5,7 +5,11 @@ export interface DraftReadyArgs {
   magicUrl: string;
 }
 
-export function renderDraftReady(args: DraftReadyArgs): { subject: string; html: string; text: string } {
+export function renderDraftReady(args: DraftReadyArgs): {
+  subject: string;
+  html: string;
+  text: string;
+} {
   const preview = args.draft.body.slice(0, 140).replace(/\n/g, ' ').trim() + '…';
   const pillar = args.draft.pillar;
   const subject = `InDraft — draft ready (${pillar})`;

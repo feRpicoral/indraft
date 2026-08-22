@@ -14,7 +14,13 @@ const cfg: Config = {
   content: {
     pillars: ['fullstack', 'cs_fundamentals'],
     tone_default: 'casual',
-    linter: { max_em_dashes: 2, max_emojis: 1, max_hashtags: 5, buzzwords: [], generic_openers: [] },
+    linter: {
+      max_em_dashes: 2,
+      max_emojis: 1,
+      max_hashtags: 5,
+      buzzwords: [],
+      generic_openers: [],
+    },
   },
   media: { image_provider: 'pexels', allow_ai_image_when_on_topic: false },
   post: { link_placement: 'none', hashtags_target: 4 },

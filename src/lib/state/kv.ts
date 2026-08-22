@@ -30,12 +30,7 @@ export interface KvAdapter {
 
   // Sorted sets (for pending-drafts queue)
   zadd(key: string, ...entries: Array<{ score: number; member: string }>): Promise<number>;
-  zrange(
-    key: string,
-    start: number,
-    stop: number,
-    opts?: { rev?: boolean },
-  ): Promise<string[]>;
+  zrange(key: string, start: number, stop: number, opts?: { rev?: boolean }): Promise<string[]>;
   zrem(key: string, ...members: string[]): Promise<number>;
 
   // Lists (for capped history)
@@ -104,12 +99,7 @@ class MemoryKv implements KvAdapter {
 
   async expire(key: string, seconds: number): Promise<number> {
     this.check(key);
-    if (
-      !this.store.has(key) &&
-      !this.sets.has(key) &&
-      !this.zsets.has(key) &&
-      !this.lists.has(key)
-    )
+    if (!this.store.has(key) && !this.sets.has(key) && !this.zsets.has(key) && !this.lists.has(key))
       return 0;
     this.expiries.set(key, Date.now() + seconds * 1000);
     return 1;
@@ -146,10 +136,7 @@ class MemoryKv implements KvAdapter {
     return removed;
   }
 
-  async zadd(
-    key: string,
-    ...entries: Array<{ score: number; member: string }>
-  ): Promise<number> {
+  async zadd(key: string, ...entries: Array<{ score: number; member: string }>): Promise<number> {
     this.check(key);
     let z = this.zsets.get(key);
     if (!z) {
@@ -288,10 +275,7 @@ class UpstashKv implements KvAdapter {
     const [first, ...rest] = members as [string, ...string[]];
     return await this.redis.srem(key, first, ...rest);
   }
-  async zadd(
-    key: string,
-    ...entries: Array<{ score: number; member: string }>
-  ): Promise<number> {
+  async zadd(key: string, ...entries: Array<{ score: number; member: string }>): Promise<number> {
     if (entries.length === 0) return 0;
     const [first, ...rest] = entries as [
       { score: number; member: string },

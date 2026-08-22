@@ -4,7 +4,7 @@ import { listSnapshots } from '@/lib/state/snapshots';
 import { __resetKvForTest } from '@/lib/state/kv';
 import { collect } from '@/lib/collector';
 import { draft as generateDraft } from '@/lib/generator';
-import { selectMedia } from '@/lib/media';
+import { selectDraftMedia } from '@/lib/media';
 import type { Config } from '@/lib/config/schema';
 import type { Draft, DraftOutput, SourceItem } from '@/lib/types';
 
@@ -32,7 +32,7 @@ vi.mock('@/lib/generator', () => ({
 }));
 
 vi.mock('@/lib/media', () => ({
-  selectMedia: vi.fn(),
+  selectDraftMedia: vi.fn(),
 }));
 
 vi.mock('@/lib/llm', () => ({
@@ -76,7 +76,9 @@ beforeAll(() => {
 beforeEach(() => {
   __resetKvForTest();
   vi.mocked(collect).mockResolvedValue([source, otherSource]);
-  vi.mocked(selectMedia).mockResolvedValue(undefined);
+  vi.mocked(selectDraftMedia).mockImplementation(async (out) => ({
+    content_kind: out.content_kind,
+  }));
   vi.mocked(generateDraft).mockResolvedValue({
     output: draftOutput(),
     linter_warnings: [],
@@ -114,9 +116,7 @@ function draftOutput(overrides: Partial<DraftOutput> = {}): DraftOutput {
 
 async function getSources(draftId: string) {
   const { GET } = await import('@/app/api/review/sources/route');
-  const res = await GET(
-    new Request(`https://example.test/api/review/sources?draft_id=${draftId}`),
-  );
+  const res = await GET(new Request(`https://example.test/api/review/sources?draft_id=${draftId}`));
   return { status: res.status, json: (await res.json()) as Record<string, unknown> };
 }
 

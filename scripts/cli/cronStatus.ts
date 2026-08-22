@@ -9,10 +9,7 @@ export function registerCronStatus(program: Command): void {
     .action(async (opts: { limit: string }) => {
       const parsed = Number(opts.limit);
       const limit = Number.isFinite(parsed) ? Math.min(Math.max(Math.trunc(parsed), 1), 50) : 10;
-      const [latest, history] = await Promise.all([
-        latestCronAudit(),
-        listCronAudit(limit),
-      ]);
+      const [latest, history] = await Promise.all([latestCronAudit(), listCronAudit(limit)]);
       console.log(JSON.stringify({ latest, history }, null, 2));
     });
 }

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getDraft, transition } from '@/lib/state/drafts';
 import { requireDraftSession, SessionError } from '@/lib/review/requireSession';
-import { validateImage } from '@/lib/media/validate';
+import { validateImage, withinPixelCeiling } from '@/lib/media/validate';
 import type { Draft } from '@/lib/types';
 import { log } from '@/lib/util/logger';
 
@@ -24,7 +24,11 @@ function validateInlineMedia(media: z.infer<typeof OwnerMediaSchema>): string | 
     return `size ${size}B exceeds ${MAX_INLINE_IMAGE_BYTES}B`;
   }
   const meta = validateImage({ mime: media.mime, size });
-  return meta.ok ? null : (meta.reason ?? 'invalid image');
+  if (!meta.ok) return meta.reason ?? 'invalid image';
+  if (!withinPixelCeiling(Buffer.from(media.bytes, 'base64'), media.mime)) {
+    return 'image exceeds the LinkedIn pixel ceiling';
+  }
+  return null;
 }
 
 /**
@@ -166,10 +170,7 @@ export async function POST(req: Request) {
 function summarizePatch(before: Draft, patch: Partial<Draft>): string {
   const parts: string[] = [];
   if (patch.body !== undefined && patch.body !== before.body) parts.push('edited body');
-  if (
-    patch.hashtags !== undefined &&
-    !arraysEqual(patch.hashtags, before.hashtags)
-  ) {
+  if (patch.hashtags !== undefined && !arraysEqual(patch.hashtags, before.hashtags)) {
     parts.push('changed tags');
   }
   if (patch.pillar !== undefined && patch.pillar !== before.pillar) parts.push('changed pillar');

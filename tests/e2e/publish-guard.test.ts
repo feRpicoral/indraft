@@ -53,13 +53,13 @@ describe('publish-guard invariant', () => {
   it('PUBLISHING requires PENDING_REVIEW or PUBLISH_FAILED as the source state', async () => {
     const d = await createDraft(fresh());
 
-    await expect(
-      transition(d.id, 'PUBLISHING', { publishProof: 'p' }),
-    ).rejects.toBeInstanceOf(TransitionError);
+    await expect(transition(d.id, 'PUBLISHING', { publishProof: 'p' })).rejects.toBeInstanceOf(
+      TransitionError,
+    );
     await transition(d.id, 'DISCARDED');
-    await expect(
-      transition(d.id, 'PUBLISHING', { publishProof: 'p' }),
-    ).rejects.toBeInstanceOf(TransitionError);
+    await expect(transition(d.id, 'PUBLISHING', { publishProof: 'p' })).rejects.toBeInstanceOf(
+      TransitionError,
+    );
   });
 
   it('STALE → PUBLISHING is rejected (must recover via DRAFTED first)', async () => {
@@ -67,9 +67,9 @@ describe('publish-guard invariant', () => {
     await transition(d.id, 'PENDING_REVIEW');
     await transition(d.id, 'STALE');
 
-    await expect(
-      transition(d.id, 'PUBLISHING', { publishProof: 'p' }),
-    ).rejects.toBeInstanceOf(TransitionError);
+    await expect(transition(d.id, 'PUBLISHING', { publishProof: 'p' })).rejects.toBeInstanceOf(
+      TransitionError,
+    );
   });
 
   it('challengeFor is sensitive to body, version, and id', () => {

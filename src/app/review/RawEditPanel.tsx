@@ -33,8 +33,7 @@ type PendingImage =
 
 const PENDING_UNCHANGED: PendingImage = { mode: 'unchanged' };
 
-const normalize = (tags: string[]): string[] =>
-  tags.map((t) => t.replace(/^#+/, '').toLowerCase());
+const normalize = (tags: string[]): string[] => tags.map((t) => t.replace(/^#+/, '').toLowerCase());
 
 async function fileToOwnerMedia(file: File): Promise<DraftMedia> {
   const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -43,7 +42,9 @@ async function fileToOwnerMedia(file: File): Promise<DraftMedia> {
       if (typeof reader.result === 'string') resolve(reader.result);
       else reject(new Error('failed to read image'));
     });
-    reader.addEventListener('error', () => reject(reader.error ?? new Error('failed to read image')));
+    reader.addEventListener('error', () =>
+      reject(reader.error ?? new Error('failed to read image')),
+    );
     reader.readAsDataURL(file);
   });
   const comma = dataUrl.indexOf(',');
@@ -301,78 +302,82 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
       )}
 
       {contentKind !== 'text' && (
-      <div className="mt-3">
-        <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
-          <span className="inline-flex items-center gap-1.5">
-            {uploadSlot === 'thumbnail' ? 'Article thumbnail' : 'Image'}
-            <InfoIcon tip={uploadSlot === 'thumbnail'
-              ? 'Optional. If omitted, the publisher will try the article URL’s OG image at publish time. PNG or JPEG, ≤1MB.'
-              : 'Optional image attached to the post. Saved on click of Save edit; discarded on Cancel. PNG or JPEG, ≤1MB.'} />
-          </span>
-        </label>
-        {mediaPreviewSrc ? (
-          <div className="mt-1 flex items-start gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={mediaPreviewSrc}
-              alt={draft.media?.alt ?? ''}
-              className="max-h-32 rounded-md border border-zinc-200 object-cover dark:border-zinc-700"
-            />
-            <div className="flex flex-col gap-1.5">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={inputsDisabled}
-                className="rounded-md border border-zinc-300 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-              >
-                Replace image
-              </button>
-              <button
-                type="button"
-                onClick={queueImageRemove}
-                disabled={inputsDisabled}
-                className="rounded-md border border-red-300 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/30"
-              >
-                Remove image
-              </button>
+        <div className="mt-3">
+          <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
+            <span className="inline-flex items-center gap-1.5">
+              {uploadSlot === 'thumbnail' ? 'Article thumbnail' : 'Image'}
+              <InfoIcon
+                tip={
+                  uploadSlot === 'thumbnail'
+                    ? 'Optional. If omitted, the publisher will try the article URL’s OG image at publish time. PNG or JPEG, ≤1MB.'
+                    : 'Optional image attached to the post. Saved on click of Save edit; discarded on Cancel. PNG or JPEG, ≤1MB.'
+                }
+              />
+            </span>
+          </label>
+          {mediaPreviewSrc ? (
+            <div className="mt-1 flex items-start gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={mediaPreviewSrc}
+                alt={draft.media?.alt ?? ''}
+                className="max-h-32 rounded-md border border-zinc-200 object-cover dark:border-zinc-700"
+              />
+              <div className="flex flex-col gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={inputsDisabled}
+                  className="rounded-md border border-zinc-300 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                >
+                  Replace image
+                </button>
+                <button
+                  type="button"
+                  onClick={queueImageRemove}
+                  disabled={inputsDisabled}
+                  className="rounded-md border border-red-300 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/30"
+                >
+                  Remove image
+                </button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOver(true);
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragOver(false);
-              const f = e.dataTransfer.files?.[0];
+          ) : (
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                const f = e.dataTransfer.files?.[0];
+                if (f) queueImageReplace(f);
+              }}
+              onClick={() => fileInputRef.current?.click()}
+              className={
+                'mt-1 flex h-20 cursor-pointer items-center justify-center rounded-md border border-dashed text-xs ' +
+                (dragOver
+                  ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300'
+                  : 'border-zinc-300 text-zinc-500 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600')
+              }
+            >
+              Drop image here or click to choose (PNG/JPEG, ≤1MB)
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg"
+            hidden
+            disabled={inputsDisabled}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
               if (f) queueImageReplace(f);
             }}
-            onClick={() => fileInputRef.current?.click()}
-            className={
-              'mt-1 flex h-20 cursor-pointer items-center justify-center rounded-md border border-dashed text-xs ' +
-              (dragOver
-                ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300'
-                : 'border-zinc-300 text-zinc-500 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600')
-            }
-          >
-            Drop image here or click to choose (PNG/JPEG, ≤1MB)
-          </div>
-        )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/png,image/jpeg"
-          hidden
-          disabled={inputsDisabled}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) queueImageReplace(f);
-          }}
-        />
-      </div>
+          />
+        </div>
       )}
 
       <div className="mt-3">
@@ -410,42 +415,42 @@ export default function RawEditPanel({ draft, pillars, onSaved, onCancel }: Prop
       </div>
 
       {contentKind !== 'article' && (
-      <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_160px]">
-        <div>
-          <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
-            <span className="inline-flex items-center gap-1.5">
-              Link URL
-              <InfoIcon tip="Optional source URL for the news/article this post is about. Only included in the published post if placement is 'body' or 'comment'." />
-            </span>
-          </label>
-          <input
-            type="url"
-            value={linkUrl}
-            onChange={(e) => setLinkUrl(e.target.value)}
-            placeholder="https://…"
-            disabled={inputsDisabled}
-            className="mt-1 w-full rounded-md border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
-          />
+        <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_160px]">
+          <div>
+            <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
+              <span className="inline-flex items-center gap-1.5">
+                Link URL
+                <InfoIcon tip="Optional source URL for the news/article this post is about. Only included in the published post if placement is 'body' or 'comment'." />
+              </span>
+            </label>
+            <input
+              type="url"
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              placeholder="https://…"
+              disabled={inputsDisabled}
+              className="mt-1 w-full rounded-md border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
+              <span className="inline-flex items-center gap-1.5">
+                Placement
+                <InfoIcon tip="Where the link appears: none = omit entirely (recommended; LinkedIn suppresses links), body = appended to the post text, comment = posted as the first comment." />
+              </span>
+            </label>
+            <select
+              value={linkPlacement}
+              onChange={(e) => setLinkPlacement(e.target.value as LinkPlacement)}
+              disabled={inputsDisabled}
+              className="mt-1 w-full rounded-md border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+            >
+              <option value="none">none</option>
+              <option value="body">body</option>
+              <option value="comment">comment</option>
+            </select>
+          </div>
         </div>
-        <div>
-          <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
-            <span className="inline-flex items-center gap-1.5">
-              Placement
-              <InfoIcon tip="Where the link appears: none = omit entirely (recommended; LinkedIn suppresses links), body = appended to the post text, comment = posted as the first comment." />
-            </span>
-          </label>
-          <select
-            value={linkPlacement}
-            onChange={(e) => setLinkPlacement(e.target.value as LinkPlacement)}
-            disabled={inputsDisabled}
-            className="mt-1 w-full rounded-md border border-zinc-300 bg-white p-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
-          >
-            <option value="none">none</option>
-            <option value="body">body</option>
-            <option value="comment">comment</option>
-          </select>
-        </div>
-      </div>
       )}
 
       {err && <p className="mt-3 text-xs text-red-600">{err}</p>}

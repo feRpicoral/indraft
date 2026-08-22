@@ -101,3 +101,124 @@ describe('parseFeed (unknown)', () => {
     expect(items).toEqual([]);
   });
 });
+
+function rss2Item(inner: string): string {
+  return `<?xml version="1.0"?>
+<rss version="2.0"><channel><title>Example</title><item>
+  <title>Post</title><link>https://example.com/post</link>${inner}
+</item></channel></rss>`;
+}
+
+describe('parseFeed image extraction', () => {
+  it('reads media:content', () => {
+    const items = parseFeed(
+      rss2Item('<media:content url="https://cdn.example.com/a.jpg" medium="image"/>'),
+      'example.com',
+      'dev',
+    );
+
+    expect(items[0]?.image_url).toBe('https://cdn.example.com/a.jpg');
+  });
+
+  it('reads media:thumbnail when media:content is absent', () => {
+    const items = parseFeed(
+      rss2Item('<media:thumbnail url="https://cdn.example.com/t.jpg" type="image/jpeg"/>'),
+      'example.com',
+      'dev',
+    );
+
+    expect(items[0]?.image_url).toBe('https://cdn.example.com/t.jpg');
+  });
+
+  it('reads an image enclosure', () => {
+    const items = parseFeed(
+      rss2Item('<enclosure url="https://cdn.example.com/e.jpg" type="image/jpeg"/>'),
+      'example.com',
+      'dev',
+    );
+
+    expect(items[0]?.image_url).toBe('https://cdn.example.com/e.jpg');
+  });
+
+  it('ignores non-image enclosures', () => {
+    const items = parseFeed(
+      rss2Item('<enclosure url="https://cdn.example.com/ep.mp3" type="audio/mpeg"/>'),
+      'example.com',
+      'dev',
+    );
+
+    expect(items[0]?.image_url).toBeUndefined();
+  });
+
+  it('ignores untyped enclosures whose url is not an image', () => {
+    const items = parseFeed(
+      rss2Item('<enclosure url="https://example.com/listen"/>'),
+      'example.com',
+      'dev',
+    );
+
+    expect(items[0]?.image_url).toBeUndefined();
+  });
+
+  it('falls back to the first inline img and resolves it against the entry link', () => {
+    const items = parseFeed(
+      rss2Item('<description><![CDATA[<p>hi</p><img src="/img/hero.jpg"/>]]></description>'),
+      'example.com',
+      'dev',
+    );
+
+    expect(items[0]?.image_url).toBe('https://example.com/img/hero.jpg');
+  });
+
+  it('prefers a media declaration over an inline img', () => {
+    const items = parseFeed(
+      rss2Item(
+        '<media:content url="https://cdn.example.com/a.jpg" medium="image"/>' +
+          '<description><![CDATA[<img src="https://cdn.example.com/inline.jpg"/>]]></description>',
+      ),
+      'example.com',
+      'dev',
+    );
+
+    expect(items[0]?.image_url).toBe('https://cdn.example.com/a.jpg');
+  });
+
+  it('leaves image_url unset when the entry carries no image', () => {
+    const items = parseFeed(
+      rss2Item('<description>plain text</description>'),
+      'example.com',
+      'dev',
+    );
+
+    expect(items[0]?.image_url).toBeUndefined();
+  });
+
+  it('scans Atom content when the summary carries no img', () => {
+    const atomWithContent = `<?xml version="1.0"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><entry>
+  <title>Entry</title>
+  <link href="https://example.com/a1" rel="alternate"/>
+  <summary>Plain text summary, no markup</summary>
+  <content type="html"><![CDATA[<p>body</p><img src="https://cdn.example.com/atom.jpg"/>]]></content>
+</entry></feed>`;
+
+    const items = parseFeed(atomWithContent, 'example.com', 'dev');
+
+    expect(items[0]?.image_url).toBe('https://cdn.example.com/atom.jpg');
+    expect(items[0]?.summary).toBe('Plain text summary, no markup');
+  });
+
+  it('reads an Atom enclosure link', () => {
+    const atomEnclosure = `<?xml version="1.0"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><entry>
+  <title>Entry</title>
+  <link href="https://example.com/a1" rel="alternate"/>
+  <link href="https://cdn.example.com/enc.jpg" rel="enclosure" type="image/jpeg"/>
+  <summary>Summary</summary>
+</entry></feed>`;
+
+    const items = parseFeed(atomEnclosure, 'example.com', 'dev');
+
+    expect(items[0]?.image_url).toBe('https://cdn.example.com/enc.jpg');
+  });
+});

@@ -79,7 +79,9 @@ export async function POST(req: Request) {
   }
 
   if (draft.status !== 'PENDING_REVIEW' && draft.status !== 'PUBLISH_FAILED') {
-    return new NextResponse(`draft not in a publishable state (status=${draft.status})`, { status: 409 });
+    return new NextResponse(`draft not in a publishable state (status=${draft.status})`, {
+      status: 409,
+    });
   }
   if (draft.version !== parsed.version) return new NextResponse('stale version', { status: 409 });
 
@@ -136,9 +138,7 @@ export async function POST(req: Request) {
       body: publishing.body,
       ...(publishing.hashtags.length > 0 ? { hashtags: publishing.hashtags } : {}),
       ...(articleInput ? { article: articleInput } : {}),
-      ...(publishing.content_kind !== 'article' &&
-      publishing.media?.bytes &&
-      publishing.media.mime
+      ...(publishing.content_kind !== 'article' && publishing.media?.bytes && publishing.media.mime
         ? {
             image: {
               bytes: publishing.media.bytes,
@@ -200,9 +200,7 @@ export async function POST(req: Request) {
  * omitted when no image is available (LinkedIn renders title + domain in that
  * case, which is fine).
  */
-async function buildArticleInput(
-  article: DraftArticle,
-): Promise<{
+async function buildArticleInput(article: DraftArticle): Promise<{
   source: string;
   title: string;
   thumbnail?: { bytes: string; mime: string; alt?: string };

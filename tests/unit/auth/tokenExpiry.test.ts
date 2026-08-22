@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { daysToExpiry, isExpired, shouldWarnReauth, REAUTH_WARNING_DAYS } from '@/lib/auth/tokenExpiry';
+import {
+  daysToExpiry,
+  isExpired,
+  shouldWarnReauth,
+  REAUTH_WARNING_DAYS,
+} from '@/lib/auth/tokenExpiry';
 import { ONE_DAY_MS } from '@/lib/util/time';
 
 const SECONDS_PER_DAY = 86400;

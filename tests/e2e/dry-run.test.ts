@@ -39,7 +39,10 @@ const rss = `<?xml version="1.0"?>
 </channel></rss>`;
 
 const server = setupServer(
-  http.get('https://example.com/feed', () => new HttpResponse(rss, { headers: { 'content-type': 'application/rss+xml' } })),
+  http.get(
+    'https://example.com/feed',
+    () => new HttpResponse(rss, { headers: { 'content-type': 'application/rss+xml' } }),
+  ),
   http.post('https://ai-gateway.vercel.sh/v1/chat/completions', () =>
     HttpResponse.json({
       choices: [{ message: { content: goodLlmResponse } }],
@@ -93,7 +96,10 @@ beforeEach(() => {
   __resetKvForTest();
   server.resetHandlers();
   server.use(
-    http.get('https://example.com/feed', () => new HttpResponse(rss, { headers: { 'content-type': 'application/rss+xml' } })),
+    http.get(
+      'https://example.com/feed',
+      () => new HttpResponse(rss, { headers: { 'content-type': 'application/rss+xml' } }),
+    ),
     http.post('https://ai-gateway.vercel.sh/v1/chat/completions', () =>
       HttpResponse.json({ choices: [{ message: { content: goodLlmResponse } }] }),
     ),

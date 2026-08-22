@@ -3,9 +3,11 @@ export interface ReauthLinkedInArgs {
   authUrl: string;
 }
 
-export function renderReauthLinkedIn(
-  args: ReauthLinkedInArgs,
-): { subject: string; html: string; text: string } {
+export function renderReauthLinkedIn(args: ReauthLinkedInArgs): {
+  subject: string;
+  html: string;
+  text: string;
+} {
   const subject = `InDraft — LinkedIn token expires in ${args.daysLeft} days`;
   const intro =
     args.daysLeft <= 0

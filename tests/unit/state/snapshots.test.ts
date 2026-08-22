@@ -52,9 +52,9 @@ describe('snapshots', () => {
     const d = await createDraft(freshInput());
     await transition(d.id, 'PENDING_REVIEW');
 
-    await expect(
-      transition(d.id, 'EDITED', { patch: { body: 'x' } }),
-    ).rejects.toBeInstanceOf(MissingSnapshotMetaError);
+    await expect(transition(d.id, 'EDITED', { patch: { body: 'x' } })).rejects.toBeInstanceOf(
+      MissingSnapshotMetaError,
+    );
   });
 
   it('caps the snapshot list at SNAPSHOT_CAP entries', async () => {

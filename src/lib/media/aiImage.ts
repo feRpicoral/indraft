@@ -11,7 +11,9 @@ import { log } from '../util/logger';
  * To actually generate, plug an image model (OpenAI, Stability, FAL) here and
  * return { url, alt }.
  */
-export async function generateAiImage(concept: string): Promise<{ url: string; alt: string } | null> {
+export async function generateAiImage(
+  concept: string,
+): Promise<{ url: string; alt: string } | null> {
   log.info('ai image requested but generator not configured', { concept });
   return null;
 }

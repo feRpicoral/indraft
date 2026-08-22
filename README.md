@@ -53,6 +53,7 @@ Two tracks. Pick one — or do the manual steps and run `yarn setup` afterwards 
    - "Sign In with LinkedIn using OpenID Connect" → grants `openid profile email`
 
    Do NOT request "Marketing Developer Platform" — multi-week review, unnecessary.
+
 2. **Vercel AI Gateway** — create an AI Gateway API key, then attach your own Anthropic key under **BYOK** (dashboard). BYOK routes at provider list price with zero gateway markup.
 3. **Resend** — sign up, verify your sender domain.
 4. **Pexels** — get a free API key (instant, no waitlist).
@@ -137,13 +138,13 @@ yarn indraft check-token     # exits 1 if < 7 days remain
 
 ## CLI reference
 
-| Command | What it does |
-|---|---|
-| `yarn indraft run` | Run the scheduled job once. Posts in real life if the day matches. |
-| `yarn indraft dry-run` | Collect → draft → lint → store as PENDING_REVIEW. Skips notification send. CI-safe. |
-| `yarn indraft cron-status` | Show the latest in-progress cron attempt and recent completed cron results. |
-| `yarn indraft auth` | Opens the deployed app's LinkedIn OAuth flow; stores the access token in KV. |
-| `yarn indraft check-token` | Prints days-to-expiry. Exits 1 if < 7 days. |
+| Command                    | What it does                                                                        |
+| -------------------------- | ----------------------------------------------------------------------------------- |
+| `yarn indraft run`         | Run the scheduled job once. Posts in real life if the day matches.                  |
+| `yarn indraft dry-run`     | Collect → draft → lint → store as PENDING_REVIEW. Skips notification send. CI-safe. |
+| `yarn indraft cron-status` | Show the latest in-progress cron attempt and recent completed cron results.         |
+| `yarn indraft auth`        | Opens the deployed app's LinkedIn OAuth flow; stores the access token in KV.        |
+| `yarn indraft check-token` | Prints days-to-expiry. Exits 1 if < 7 days.                                         |
 
 ## Testing
 
