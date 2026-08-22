@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDraft, transition } from '@/lib/state/drafts';
 import { requireDraftSession, SessionError } from '@/lib/review/requireSession';
-import { validateImage } from '@/lib/media/validate';
+import { validateImage, withinPixelCeiling } from '@/lib/media/validate';
 import type { Draft, DraftMedia } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -34,10 +34,17 @@ export async function POST(req: Request) {
   if (!meta.ok) {
     return NextResponse.json({ error: meta.reason }, { status: 415 });
   }
+  const buf = Buffer.from(await file.arrayBuffer());
+  if (!withinPixelCeiling(buf, file.type)) {
+    return NextResponse.json(
+      { error: 'image exceeds the LinkedIn pixel ceiling' },
+      { status: 415 },
+    );
+  }
   const draft = await getDraft(draftId);
   if (!draft) return new NextResponse('draft not found', { status: 404 });
 
-  const bytes = Buffer.from(await file.arrayBuffer()).toString('base64');
+  const bytes = buf.toString('base64');
   const alt = typeof form.get('alt') === 'string' ? (form.get('alt') as string) : '';
   const newMedia: DraftMedia = { kind: 'owner', bytes, mime: file.type, alt };
 

@@ -300,6 +300,33 @@ describe('selectSourceImage quality filtering', () => {
     expect(media).toBeUndefined();
   });
 
+  it('rejects a feed image over the linkedin pixel ceiling and falls back to og:image', async () => {
+    server.use(
+      http.get('https://cdn.example.com/huge.png', png(8000, 5000)),
+      http.get('https://news.example.com/article', () =>
+        pageWithOgImage('https://cdn.example.com/real.png'),
+      ),
+      http.get('https://cdn.example.com/real.png', png(1200, 627)),
+    );
+
+    const media = await selectSourceImage(item({ image_url: 'https://cdn.example.com/huge.png' }));
+
+    expect(media?.url).toBe('https://cdn.example.com/real.png');
+  });
+
+  it('returns nothing when the og:image is over the linkedin pixel ceiling', async () => {
+    server.use(
+      http.get('https://news.example.com/article', () =>
+        pageWithOgImage('https://cdn.example.com/huge.png'),
+      ),
+      http.get('https://cdn.example.com/huge.png', png(8000, 5000)),
+    );
+
+    const media = await selectSourceImage(item());
+
+    expect(media).toBeUndefined();
+  });
+
   it('returns nothing when the og:image is below the size floor', async () => {
     server.use(
       http.get('https://news.example.com/article', () =>

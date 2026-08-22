@@ -3,6 +3,7 @@ import { downloadImageBytes } from '../util/downloadImageBytes';
 import { fetchOgImage } from '../util/ogImage';
 import { log } from '../util/logger';
 import { looksLikeSiteChrome, meetsMinimumSize, withoutDownscaleParams } from './imageQuality';
+import { withinPixelCeiling } from './validate';
 
 /**
  * Resolve the image belonging to the source article itself: the feed's own
@@ -35,6 +36,14 @@ function feedCandidates(imageUrl: string | undefined): string[] {
   return original ? [original, imageUrl] : [imageUrl];
 }
 
+/** Rejection reason for a downloaded candidate, or null when it is usable. */
+function unusableBecause(bytes: string, mime: string): string | null {
+  const buf = Buffer.from(bytes, 'base64');
+  if (!meetsMinimumSize(buf, mime)) return 'below minimum size';
+  if (!withinPixelCeiling(buf, mime)) return 'exceeds linkedin pixel ceiling';
+  return null;
+}
+
 async function tryFeedImage(url: string, title: string): Promise<DraftMedia | undefined> {
   if (looksLikeSiteChrome(url)) {
     log.info('source image: skipping site chrome', { url });
@@ -42,8 +51,9 @@ async function tryFeedImage(url: string, title: string): Promise<DraftMedia | un
   }
   const img = await downloadImageBytes(url);
   if (!img) return undefined;
-  if (!meetsMinimumSize(Buffer.from(img.bytes, 'base64'), img.mime)) {
-    log.info('source image: below minimum size', { url });
+  const unusable = unusableBecause(img.bytes, img.mime);
+  if (unusable) {
+    log.info('source image: rejected feed image', { url, reason: unusable });
     return undefined;
   }
   return { kind: 'source', url, alt: title, bytes: img.bytes, mime: img.mime };
@@ -56,8 +66,9 @@ async function tryOgImage(item: SourceItem): Promise<DraftMedia | undefined> {
     log.info('source image: og:image is site chrome', { url: og.url });
     return undefined;
   }
-  if (!meetsMinimumSize(Buffer.from(og.bytes, 'base64'), og.mime)) {
-    log.info('source image: og:image below minimum size', { url: og.url });
+  const unusable = unusableBecause(og.bytes, og.mime);
+  if (unusable) {
+    log.info('source image: rejected og:image', { url: og.url, reason: unusable });
     return undefined;
   }
   return { kind: 'source', url: og.url, bytes: og.bytes, mime: og.mime, alt: og.alt ?? item.title };
