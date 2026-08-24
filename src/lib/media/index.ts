@@ -9,10 +9,12 @@ import { selectSourceImage } from './sourceImage';
 
 export { validateImage } from './validate';
 export { searchPexels } from './pexels';
-export { selectSourceImage } from './sourceImage';
+export { selectSourceImage, fetchVettedOgImage } from './sourceImage';
 
 export interface DraftMediaSelection {
   media?: DraftMedia;
+  /** Card thumbnail. Only set for article-kind posts. */
+  thumbnail?: DraftMedia;
   /** Kind after attaching the image; a resolved image promotes a text post. */
   content_kind: ContentKind;
 }
@@ -26,15 +28,20 @@ export interface DraftMediaSelection {
  * effectively never got one. A real image from the article also beats a generic
  * stock photo on relevance.
  *
- * Article-kind posts are skipped entirely — LinkedIn renders the link card's
- * own preview, and the publish route resolves that thumbnail separately.
+ * Article-kind posts keep their kind — the format the model picked is about
+ * how the post should read, not about whether an image exists — but still get
+ * the image, attached as the card thumbnail so it is visible during review
+ * rather than resolved for the first time at publish.
  */
 export async function selectDraftMedia(
   out: DraftOutput,
   cfg: Config,
   item: SourceItem,
 ): Promise<DraftMediaSelection> {
-  if (out.content_kind === 'article') return { content_kind: 'article' };
+  if (out.content_kind === 'article') {
+    const thumbnail = await selectSourceImage(item);
+    return { content_kind: 'article', ...(thumbnail ? { thumbnail } : {}) };
+  }
 
   const media = (await selectSourceImage(item)) ?? (await selectMedia(out, cfg));
   if (!media) return { content_kind: out.content_kind };

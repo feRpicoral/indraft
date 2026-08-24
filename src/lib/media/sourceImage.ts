@@ -23,7 +23,37 @@ export async function selectSourceImage(item: SourceItem): Promise<DraftMedia | 
     const media = await tryFeedImage(url, item.title);
     if (media) return media;
   }
-  return tryOgImage(item);
+  return fetchVettedOgImage(item.url, item.title);
+}
+
+/**
+ * The article page's og:image, put through the same vetting as a feed image.
+ * Exported because the publish path resolves article-card thumbnails from a
+ * bare URL, with no SourceItem in hand.
+ */
+export async function fetchVettedOgImage(
+  pageUrl: string,
+  fallbackAlt?: string,
+): Promise<DraftMedia | undefined> {
+  const og = await fetchOgImage(pageUrl);
+  if (!og) return undefined;
+  if (looksLikeSiteChrome(og.url)) {
+    log.info('source image: og:image is site chrome', { url: og.url });
+    return undefined;
+  }
+  const unusable = unusableBecause(og.bytes, og.mime);
+  if (unusable) {
+    log.info('source image: rejected og:image', { url: og.url, reason: unusable });
+    return undefined;
+  }
+  const alt = og.alt ?? fallbackAlt;
+  return {
+    kind: 'source',
+    url: og.url,
+    bytes: og.bytes,
+    mime: og.mime,
+    ...(alt !== undefined ? { alt } : {}),
+  };
 }
 
 /**
@@ -57,19 +87,4 @@ async function tryFeedImage(url: string, title: string): Promise<DraftMedia | un
     return undefined;
   }
   return { kind: 'source', url, alt: title, bytes: img.bytes, mime: img.mime };
-}
-
-async function tryOgImage(item: SourceItem): Promise<DraftMedia | undefined> {
-  const og = await fetchOgImage(item.url);
-  if (!og) return undefined;
-  if (looksLikeSiteChrome(og.url)) {
-    log.info('source image: og:image is site chrome', { url: og.url });
-    return undefined;
-  }
-  const unusable = unusableBecause(og.bytes, og.mime);
-  if (unusable) {
-    log.info('source image: rejected og:image', { url: og.url, reason: unusable });
-    return undefined;
-  }
-  return { kind: 'source', url: og.url, bytes: og.bytes, mime: og.mime, alt: og.alt ?? item.title };
 }

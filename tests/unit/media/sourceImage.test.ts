@@ -163,7 +163,9 @@ describe('selectDraftMedia', () => {
     expect(result.media).toBeUndefined();
   });
 
-  it('skips article-kind posts so the link card keeps its own preview', async () => {
+  it('gives an article-kind post a card thumbnail without changing its kind', async () => {
+    server.use(http.get('https://cdn.example.com/feed.jpg', jpeg));
+
     const result = await selectDraftMedia(
       out({ content_kind: 'article', article: { source: 'https://news.example.com', title: 't' } }),
       cfg(),
@@ -171,6 +173,49 @@ describe('selectDraftMedia', () => {
     );
 
     expect(result.content_kind).toBe('article');
+    expect(result.thumbnail?.kind).toBe('source');
+    expect(result.media).toBeUndefined();
+  });
+
+  it('leaves an article-kind post without a thumbnail when the image is site chrome', async () => {
+    server.use(
+      http.get('https://news.example.com/article', () =>
+        pageWithOgImage('https://arxiv.org/static/browse/images/arxiv-logo-fb.png'),
+      ),
+      http.get('https://arxiv.org/static/browse/images/arxiv-logo-fb.png', png(1200, 627)),
+    );
+
+    const result = await selectDraftMedia(
+      out({ content_kind: 'article', article: { source: 'https://news.example.com', title: 't' } }),
+      cfg(),
+      item(),
+    );
+
+    expect(result.content_kind).toBe('article');
+    expect(result.thumbnail).toBeUndefined();
+  });
+
+  it('does not fall back to stock imagery for an article-kind post', async () => {
+    vi.stubEnv('PEXELS_API_KEY', 'test-pexels-key');
+    server.use(
+      http.get('https://news.example.com/article', () =>
+        HttpResponse.html('<html><head></head><body></body></html>'),
+      ),
+    );
+
+    const result = await selectDraftMedia(
+      out({
+        content_kind: 'article',
+        needs_image: true,
+        image_source: 'stock',
+        image_query: 'chips',
+        article: { source: 'https://news.example.com', title: 't' },
+      }),
+      cfg(),
+      item(),
+    );
+
+    expect(result.thumbnail).toBeUndefined();
     expect(result.media).toBeUndefined();
   });
 

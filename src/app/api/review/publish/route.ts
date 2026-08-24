@@ -10,7 +10,7 @@ import { verifyAuthentication } from '@/lib/auth/webauthn';
 import { getLinkedInToken } from '@/lib/state/tokens';
 import { LinkedInApiPublisher } from '@/lib/publisher';
 import { recordPublished } from '@/lib/state/history';
-import { fetchOgImage } from '@/lib/util/ogImage';
+import { fetchVettedOgImage } from '@/lib/media';
 import type { DraftArticle } from '@/lib/types';
 import { log } from '@/lib/util/logger';
 
@@ -216,8 +216,8 @@ async function buildArticleInput(article: DraftArticle): Promise<{
       },
     };
   }
-  const og = await fetchOgImage(article.source);
-  if (og) {
+  const og = await fetchVettedOgImage(article.source);
+  if (og?.bytes && og.mime) {
     log.info('article publish: og thumbnail fetched', { source: article.source });
     return {
       ...base,

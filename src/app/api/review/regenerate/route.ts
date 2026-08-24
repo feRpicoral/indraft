@@ -55,7 +55,7 @@ export async function POST(req: Request) {
       { cfg, llm },
       { sources, chosenItem: chosen, targetPillar, recentPillars: recent },
     );
-    const { media, content_kind } = await selectDraftMedia(output, cfg, chosen);
+    const { media, thumbnail, content_kind } = await selectDraftMedia(output, cfg, chosen);
 
     const switchTurn: EditTurn = {
       role: 'assistant',
@@ -76,7 +76,11 @@ export async function POST(req: Request) {
     if (output.link) patch.link = { url: output.link, placement: output.link_placement };
     else patch.link = undefined;
     if (content_kind === 'article' && output.article) {
-      patch.article = { source: output.article.source, title: output.article.title };
+      patch.article = {
+        source: output.article.source,
+        title: output.article.title,
+        ...(thumbnail ? { thumbnail } : {}),
+      };
     } else {
       patch.article = undefined;
     }
