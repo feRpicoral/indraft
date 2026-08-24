@@ -133,7 +133,7 @@ export async function runScheduledJob(opts: RunOpts = {}): Promise<RunResult> {
       { sources, chosenItem, targetPillar, recentPillars: recent },
     );
 
-    const { media, content_kind } = await selectDraftMedia(output, cfg, chosenItem);
+    const { media, thumbnail, content_kind } = await selectDraftMedia(output, cfg, chosenItem);
 
     const draft = await createDraft({
       body: output.body,
@@ -144,7 +144,9 @@ export async function runScheduledJob(opts: RunOpts = {}): Promise<RunResult> {
       source_url: output.source_url,
       conversation: [],
       ...(media ? { media } : {}),
-      ...(output.article ? { article: output.article } : {}),
+      ...(output.article
+        ? { article: { ...output.article, ...(thumbnail ? { thumbnail } : {}) } }
+        : {}),
       ...(output.link ? { link: { url: output.link, placement: output.link_placement } } : {}),
       ...(output.verbatim_ranges ? { verbatim_ranges: output.verbatim_ranges } : {}),
       ...(linter_warnings.length ? { linter_warnings } : {}),
